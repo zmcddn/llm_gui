@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QMainWindow,
     QPushButton,
+    QSizePolicy,
     QSplitter,
     QTextEdit,
     QVBoxLayout,
@@ -38,13 +39,29 @@ class OllamaGUI(QMainWindow):
         self.main_splitter = QSplitter(Qt.Horizontal)
         left_panels = QSplitter(Qt.Horizontal)
 
+        # Set stretch factors and handle width for better resizing
+        self.main_splitter.setHandleWidth(2)
+        self.main_splitter.setChildrenCollapsible(False)
+        left_panels.setHandleWidth(2)
+        left_panels.setChildrenCollapsible(False)
+
+        # Create panels
         self.model_panel = self.create_input_panel("Input")
         self.thinking_panel = self.create_display_panel("Thinking Process")
         self.output_panel = self.create_display_panel("Output")
 
+        # Set size policies for left panels
+        self.model_panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.thinking_panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.output_panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+        # Add panels to left splitter
         left_panels.addWidget(self.model_panel)
         left_panels.addWidget(self.thinking_panel)
         left_panels.addWidget(self.output_panel)
+
+        # Set initial sizes for left panels (equal distribution)
+        left_panels.setSizes([100, 100, 100])
 
         # Create console panel
         self.console_panel = QWidget()
@@ -64,11 +81,19 @@ class OllamaGUI(QMainWindow):
         console_layout.addWidget(console_header)
         console_layout.addWidget(self.console_content)
 
-        self.console_panel.setMaximumWidth(300)
-        self.console_panel.setMinimumWidth(200)
+        # Set size constraints for console panel
+        self.console_panel.setMinimumWidth(100)
+        self.console_panel.setMaximumWidth(500)
+        self.console_panel.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
 
+        # Add panels to main splitter
         self.main_splitter.addWidget(left_panels)
         self.main_splitter.addWidget(self.console_panel)
+
+        # Set initial sizes for main splitter (75% left panels, 25% console)
+        total_width = self.width()
+        self.main_splitter.setSizes([int(total_width * 0.75), int(total_width * 0.25)])
+
         main_layout.addWidget(self.main_splitter)
         self.setCentralWidget(main_widget)
         self.setup_menu()
