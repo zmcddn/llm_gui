@@ -18,7 +18,6 @@ from PySide6.QtWidgets import (
 )
 
 from llm import LLMHandler
-from widgets import CollapsibleFrame
 
 
 class OllamaGUI(QMainWindow):
@@ -36,7 +35,7 @@ class OllamaGUI(QMainWindow):
         main_layout = QVBoxLayout(main_widget)
 
         # Create splitter for panels
-        splitter = QSplitter(Qt.Horizontal)
+        self.main_splitter = QSplitter(Qt.Horizontal)
         left_panels = QSplitter(Qt.Horizontal)
 
         self.model_panel = self.create_input_panel("Input")
@@ -47,24 +46,50 @@ class OllamaGUI(QMainWindow):
         left_panels.addWidget(self.thinking_panel)
         left_panels.addWidget(self.output_panel)
 
-        self.raw_panel = CollapsibleFrame("Raw Output")
-        self.raw_panel.setMaximumWidth(300)
-        self.raw_panel.setMinimumWidth(200)
+        # Create console panel
+        self.console_panel = QWidget()
+        console_layout = QVBoxLayout(self.console_panel)
+        console_layout.setContentsMargins(0, 0, 0, 0)
 
-        splitter.addWidget(left_panels)
-        splitter.addWidget(self.raw_panel)
-        main_layout.addWidget(splitter)
+        # Add header for console panel
+        console_header = QTextEdit()
+        console_header.setPlainText("Console")
+        console_header.setReadOnly(True)
+        console_header.setMaximumHeight(30)
+        console_header.setStyleSheet("background-color: #f0f0f0; border: none;")
+
+        self.console_content = QTextEdit()
+        self.console_content.setReadOnly(True)
+
+        console_layout.addWidget(console_header)
+        console_layout.addWidget(self.console_content)
+
+        self.console_panel.setMaximumWidth(300)
+        self.console_panel.setMinimumWidth(200)
+
+        self.main_splitter.addWidget(left_panels)
+        self.main_splitter.addWidget(self.console_panel)
+        main_layout.addWidget(self.main_splitter)
         self.setCentralWidget(main_widget)
         self.setup_menu()
 
     def setup_menu(self):
         """Setup menu bar"""
         menubar = self.menuBar()
+
+        # File menu
         file_menu = menubar.addMenu("File")
         save_action = file_menu.addAction("Save Conversation")
         save_action.triggered.connect(self.save_conversation)
         load_action = file_menu.addAction("Load Conversation")
         load_action.triggered.connect(self.load_conversation)
+
+        # View menu
+        view_menu = menubar.addMenu("View")
+        self.toggle_console_action = view_menu.addAction("Show Console")
+        self.toggle_console_action.setCheckable(True)
+        self.toggle_console_action.setChecked(True)
+        self.toggle_console_action.triggered.connect(self.toggle_console_panel)
 
     def create_input_panel(self, title):
         """Create an input panel with title"""
@@ -157,7 +182,7 @@ class OllamaGUI(QMainWindow):
             self.output_panel.display.setHtml("")
         else:
             self.output_panel.display.clear()
-        self.raw_panel.content.clear()
+        self.console_content.clear()
 
     def handle_response(self, response):
         """Handle streaming response from LLM"""
@@ -167,7 +192,7 @@ class OllamaGUI(QMainWindow):
             elif content_type == "output":
                 self._display_html_in_output(content)
             elif content_type == "raw":
-                self.raw_panel.content.setPlainText(content)
+                self.console_content.setPlainText(content)
 
     def _display_html_in_output(self, html_content):
         """Helper method to display HTML content in the output panel"""
@@ -181,7 +206,7 @@ class OllamaGUI(QMainWindow):
         error_msg = f"Error: {error_message}"
         self.thinking_panel.display.setPlainText(error_msg)
         self.output_panel.display.setPlainText(error_msg)
-        self.raw_panel.content.setPlainText(error_msg)
+        self.console_content.setPlainText(error_msg)
 
     def save_conversation(self):
         """Save current conversation to file"""
@@ -227,3 +252,20 @@ class OllamaGUI(QMainWindow):
                 if self.chat_history:
                     last_response = self.chat_history[-1].get("content", "")
                     self._display_raw_response(last_response)
+
+    def toggle_console_panel(self):
+        """Toggle console panel visibility"""
+        is_visible = self.toggle_console_action.isChecked()
+        self.console_panel.setVisible(is_visible)
+
+        if not is_visible:
+            # Store the current sizes before hiding
+            self.previous_sizes = self.main_splitter.sizes()
+            # Collapse the console panel
+            new_sizes = list(self.previous_sizes)
+            new_sizes[-1] = 0
+            self.main_splitter.setSizes(new_sizes)
+        else:
+            # Restore previous sizes if they exist
+            if hasattr(self, "previous_sizes"):
+                self.main_splitter.setSizes(self.previous_sizes)
