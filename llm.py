@@ -1,26 +1,53 @@
 import json
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor
+from typing import Optional
 
 import markdown
 import requests
+from PySide6.QtCore import QObject, Signal
 
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://host.docker.internal:11434")
 OLLAMA_API_URL = f"{OLLAMA_HOST}/api/generate"
 
 
+class LLMSignals(QObject):
+    thinking_update = Signal(str)
+    output_update = Signal(str)
+    console_update = Signal(str)
+    error_occurred = Signal(str)
+
+
 class LLMHandler:
     def __init__(self):
+        self.signals = LLMSignals()
+        self.executor = ThreadPoolExecutor(max_workers=1)
         self.patterns = {
             "think": re.compile(r"<think>(.*?)</think>", re.DOTALL | re.IGNORECASE),
             "output": re.compile(r"<output>(.*?)</output>", re.DOTALL | re.IGNORECASE),
         }
+        self._current_future: Optional[object] = None
 
-    def get_response(self, user_input, model, chat_history):
-        """Get response from LLM model"""
-        prompt = self._format_prompt(user_input, chat_history)
-        response = self._call_api(model, prompt)
-        return self._process_response(response)
+    def get_response(self, user_input: str, model: str, chat_history: list):
+        """Start async response generation"""
+        # Cancel any existing request
+        if self._current_future:
+            self._current_future.cancel()
+
+        # Start new request
+        self._current_future = self.executor.submit(
+            self._generate_response, user_input, model, chat_history
+        )
+
+    def _generate_response(self, user_input: str, model: str, chat_history: list):
+        """Generate response in background thread"""
+        try:
+            prompt = self._format_prompt(user_input, chat_history)
+            response = self._call_api(model, prompt)
+            self._process_response(response)
+        except Exception as e:
+            self.signals.error_occurred.emit(str(e))
 
     def _format_prompt(self, user_input, chat_history):
         """Format prompt with chat history"""
@@ -41,7 +68,7 @@ User: {user_input}"""
         response.raise_for_status()
         return response
 
-    def _process_response(self, response):
+    def _process_response(self, response: requests.Response) -> None:
         """Process streaming response"""
         full_response = ""
         for line in response.iter_lines():
@@ -53,15 +80,15 @@ User: {user_input}"""
                 # Extract thinking content
                 thinking = self._extract_content(full_response, self.patterns["think"])
                 if thinking:
-                    yield "thinking", thinking
+                    self.signals.thinking_update.emit(thinking)
 
                 # Extract output content
                 output = self._extract_content(full_response, self.patterns["output"])
                 if output:
-                    yield "output", self._generate_html(output)
+                    self.signals.output_update.emit(self._generate_html(output))
 
-                # Raw output
-                yield "raw", full_response
+                # Console output
+                self.signals.console_update.emit(full_response)
 
     def _extract_content(self, text, pattern):
         """Extract content using regex pattern"""

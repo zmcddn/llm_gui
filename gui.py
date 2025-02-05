@@ -25,10 +25,18 @@ class OllamaGUI(QMainWindow):
     def __init__(self):
         super().__init__()
         self.llm_handler = LLMHandler()
+        self.setup_llm_signals()
         self.setWindowTitle("Ollama GUI")
         self.setGeometry(100, 100, 1200, 600)
         self.setup_ui()
         self.chat_history = []
+
+    def setup_llm_signals(self):
+        """Setup signal connections for LLM handler"""
+        self.llm_handler.signals.thinking_update.connect(self.update_thinking)
+        self.llm_handler.signals.output_update.connect(self.update_output)
+        self.llm_handler.signals.console_update.connect(self.update_console)
+        self.llm_handler.signals.error_occurred.connect(self.handle_error)
 
     def setup_ui(self):
         """Setup the main UI components"""
@@ -192,13 +200,48 @@ class OllamaGUI(QMainWindow):
         self.model_input.clear()
         self.clear_displays()
 
-        try:
-            response = self.llm_handler.get_response(
-                user_input, self.model_selector.currentText(), self.chat_history
+        # Show loading indicators
+        self.thinking_panel.display.setPlainText("Analyzing your request...")
+        if isinstance(self.output_panel.display, QWebEngineView):
+            self.output_panel.display.setHtml(
+                """
+                <h3 style="color: #666;">
+                    Processing... Please wait while I prepare your response.
+                </h3>
+            """
             )
-            self.handle_response(response)
-        except Exception as e:
-            self._handle_error(str(e))
+        self.console_content.setPlainText("Processing request in progress...")
+
+        # Start async processing
+        self.llm_handler.get_response(
+            user_input, self.model_selector.currentText(), self.chat_history
+        )
+
+    def update_thinking(self, content):
+        """Update thinking panel with new content"""
+        self.thinking_panel.display.setPlainText(content)
+
+    def update_output(self, content):
+        """Update output panel with new content"""
+        self._display_html_in_output(content)
+
+    def update_console(self, content):
+        """Update console panel with new content"""
+        self.console_content.setPlainText(content)
+
+    def handle_error(self, error_message):
+        """Handle error cases"""
+        error_html = f"""
+        <html>
+        <body>
+            <h3 style="color: red;">Error Occurred</h3>
+            <p>{error_message}</p>
+        </body>
+        </html>
+        """
+        self.thinking_panel.display.setPlainText(f"Error occurred: {error_message}")
+        self._display_html_in_output(error_html)
+        self.console_content.setPlainText(f"Error: {error_message}")
 
     def clear_displays(self):
         """Clear all display panels"""
@@ -209,29 +252,12 @@ class OllamaGUI(QMainWindow):
             self.output_panel.display.clear()
         self.console_content.clear()
 
-    def handle_response(self, response):
-        """Handle streaming response from LLM"""
-        for content_type, content in response:
-            if content_type == "thinking":
-                self.thinking_panel.display.setPlainText(content)
-            elif content_type == "output":
-                self._display_html_in_output(content)
-            elif content_type == "raw":
-                self.console_content.setPlainText(content)
-
     def _display_html_in_output(self, html_content):
         """Helper method to display HTML content in the output panel"""
         if isinstance(self.output_panel.display, QWebEngineView):
             self.output_panel.display.setHtml(html_content)
         else:
             self.output_panel.display.setHtml(html_content)
-
-    def _handle_error(self, error_message):
-        """Handle error cases"""
-        error_msg = f"Error: {error_message}"
-        self.thinking_panel.display.setPlainText(error_msg)
-        self.output_panel.display.setPlainText(error_msg)
-        self.console_content.setPlainText(error_msg)
 
     def save_conversation(self):
         """Save current conversation to file"""
