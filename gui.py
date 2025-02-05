@@ -85,6 +85,8 @@ class OllamaGUI(QMainWindow):
 
         self.console_content = QTextEdit()
         self.console_content.setReadOnly(True)
+        self.console_content.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.console_content.setLineWrapMode(QTextEdit.WidgetWidth)
 
         console_layout.addWidget(console_header)
         console_layout.addWidget(self.console_content)
@@ -183,6 +185,9 @@ class OllamaGUI(QMainWindow):
             display = QTextEdit()
             display.setReadOnly(True)
             display.setAcceptRichText(True)
+            display.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+            # Enable smooth scrolling
+            display.setLineWrapMode(QTextEdit.WidgetWidth)
 
         # Add widgets to layout
         layout.addWidget(header)
@@ -220,6 +225,9 @@ class OllamaGUI(QMainWindow):
     def update_thinking(self, content):
         """Update thinking panel with new content"""
         self.thinking_panel.display.setPlainText(content)
+        self.thinking_panel.display.verticalScrollBar().setValue(
+            self.thinking_panel.display.verticalScrollBar().maximum()
+        )
 
     def update_output(self, content):
         """Update output panel with new content"""
@@ -228,6 +236,9 @@ class OllamaGUI(QMainWindow):
     def update_console(self, content):
         """Update console panel with new content"""
         self.console_content.setPlainText(content)
+        self.console_content.verticalScrollBar().setValue(
+            self.console_content.verticalScrollBar().maximum()
+        )
 
     def handle_error(self, error_message):
         """Handle error cases"""
@@ -256,8 +267,12 @@ class OllamaGUI(QMainWindow):
         """Helper method to display HTML content in the output panel"""
         if isinstance(self.output_panel.display, QWebEngineView):
             self.output_panel.display.setHtml(html_content)
+            # For WebEngineView, scrolling is handled by the HTML/JavaScript
         else:
             self.output_panel.display.setHtml(html_content)
+            self.output_panel.display.verticalScrollBar().setValue(
+                self.output_panel.display.verticalScrollBar().maximum()
+            )
 
     def save_conversation(self):
         """Save current conversation to file"""

@@ -71,6 +71,9 @@ User: {user_input}"""
     def _process_response(self, response: requests.Response) -> None:
         """Process streaming response"""
         full_response = ""
+        last_thinking = ""  # Track last thinking content
+        last_output = ""  # Track last output content
+
         for line in response.iter_lines():
             if line:
                 json_response = json.loads(line)
@@ -79,13 +82,15 @@ User: {user_input}"""
 
                 # Extract thinking content
                 thinking = self._extract_content(full_response, self.patterns["think"])
-                if thinking:
+                if thinking and thinking != last_thinking:
                     self.signals.thinking_update.emit(thinking)
+                    last_thinking = thinking
 
                 # Extract output content
                 output = self._extract_content(full_response, self.patterns["output"])
-                if output:
+                if output and output != last_output:
                     self.signals.output_update.emit(self._generate_html(output))
+                    last_output = output
 
                 # Console output
                 self.signals.console_update.emit(full_response)
