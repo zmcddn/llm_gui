@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 )
 
 from llm import LLMHandler
+from styles import Styles
 
 
 class OllamaGUI(QMainWindow):
@@ -29,7 +30,25 @@ class OllamaGUI(QMainWindow):
         self.setWindowTitle("Ollama GUI")
         self.setGeometry(100, 100, 1200, 600)
         self.setup_ui()
+        self.apply_styles()
         self.chat_history = []
+
+    def apply_styles(self):
+        """Apply custom styles to the application"""
+        self.setStyleSheet(Styles.COMMON + Styles.MAIN_WINDOW)
+        self.menuBar().setStyleSheet(Styles.MENU_BAR)
+        self.main_splitter.setStyleSheet(Styles.SPLITTER)
+
+        # Apply styles to all QTextEdit widgets
+        for widget in self.findChildren(QTextEdit):
+            if widget.maximumHeight() == 30:  # Header
+                widget.setStyleSheet(Styles.PANEL_HEADER)
+            else:  # Content
+                widget.setStyleSheet(Styles.PANEL_CONTENT + Styles.SCROLLBAR)
+
+        # Style the model selector and send button
+        self.model_selector.setStyleSheet(Styles.MODEL_SELECTOR)
+        self.send_button.setStyleSheet(Styles.SEND_BUTTON)
 
     def setup_llm_signals(self):
         """Setup signal connections for LLM handler"""
@@ -81,7 +100,12 @@ class OllamaGUI(QMainWindow):
         console_header.setPlainText("Console")
         console_header.setReadOnly(True)
         console_header.setMaximumHeight(30)
-        console_header.setStyleSheet("background-color: #f0f0f0; border: none;")
+        console_header.setVerticalScrollBarPolicy(
+            Qt.ScrollBarAlwaysOff
+        )  # Disable vertical scrollbar
+        console_header.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarAlwaysOff
+        )  # Disable horizontal scrollbar
 
         self.console_content = QTextEdit()
         self.console_content.setReadOnly(True)
@@ -130,15 +154,22 @@ class OllamaGUI(QMainWindow):
         """Create an input panel with title"""
         container = QWidget()
         layout = QVBoxLayout(container)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(8)
 
         # Add header
         header = QTextEdit()
         header.setPlainText(title)
         header.setReadOnly(True)
         header.setMaximumHeight(30)
-        header.setStyleSheet("background-color: #f0f0f0; border: none;")
+        header.setVerticalScrollBarPolicy(
+            Qt.ScrollBarAlwaysOff
+        )  # Disable vertical scrollbar
+        header.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarAlwaysOff
+        )  # Disable horizontal scrollbar
 
-        # Add model selector
+        # Create model selector with label
         model_layout = QHBoxLayout()
         model_label = QLabel("Model:")
         self.model_selector = QComboBox()
@@ -152,10 +183,12 @@ class OllamaGUI(QMainWindow):
         # Create input area
         self.model_input = QTextEdit()
         self.model_input.setMinimumHeight(100)
+        self.model_input.setStyleSheet(Styles.PANEL_CONTENT + Styles.SCROLLBAR)
 
         # Create send button
         self.send_button = QPushButton("Send")
         self.send_button.clicked.connect(self.process_input)
+        self.send_button.setFixedHeight(32)
 
         # Add widgets to layout
         layout.addWidget(header)
@@ -175,6 +208,12 @@ class OllamaGUI(QMainWindow):
         header.setPlainText(title)
         header.setReadOnly(True)
         header.setMaximumHeight(30)
+        header.setVerticalScrollBarPolicy(
+            Qt.ScrollBarAlwaysOff
+        )  # Disable vertical scrollbar
+        header.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarAlwaysOff
+        )  # Disable horizontal scrollbar
         header.setStyleSheet("background-color: #f0f0f0; border: none;")
 
         # Create display area - use QWebEngineView for output panel, QTextEdit for others
