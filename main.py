@@ -1,27 +1,36 @@
-import sys
-import requests
-from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QSplitter, QTextEdit,
-    QVBoxLayout, QWidget, QPushButton, QLineEdit, QFrame,
-    QHBoxLayout, QLabel, QComboBox, QScrollArea, QSizePolicy
-)
-from PySide6.QtCore import Qt, Signal, Slot
-from PySide6.QtGui import QTextCursor, QFont
-from PySide6.QtWebEngineWidgets import QWebEngineView
-from PySide6.QtCore import QUrl
-import markdown
-import os
 import json
+import os
 import re
+import sys
 from datetime import datetime
-import threading
 from pathlib import Path
 
-OLLAMA_HOST = os.getenv('OLLAMA_HOST', 'http://host.docker.internal:11434')
+import markdown
+import requests
+from PySide6.QtCore import Qt
+from PySide6.QtWebEngineWidgets import QWebEngineView
+from PySide6.QtWidgets import (
+    QApplication,
+    QComboBox,
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
+    QPushButton,
+    QSizePolicy,
+    QSplitter,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
+
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://host.docker.internal:11434")
 OLLAMA_API_URL = f"{OLLAMA_HOST}/api/generate"
+
 
 class CollapsibleFrame(QWidget):
     """Collapsible panel component"""
+
     def __init__(self, title="", parent=None):
         super().__init__(parent)
         layout = QVBoxLayout(self)
@@ -30,14 +39,16 @@ class CollapsibleFrame(QWidget):
 
         # Create title button
         self.toggle_button = QPushButton(title)
-        self.toggle_button.setStyleSheet("""
+        self.toggle_button.setStyleSheet(
+            """
             QPushButton {
                 text-align: left;
                 padding: 5px;
                 background-color: #f0f0f0;
                 border: none;
             }
-        """)
+        """
+        )
         self.toggle_button.clicked.connect(self.toggle_content)
 
         # Create content area
@@ -108,14 +119,14 @@ class OllamaGUI(QMainWindow):
 
         # Add menu bar
         menubar = self.menuBar()
-        file_menu = menubar.addMenu('File')
+        file_menu = menubar.addMenu("File")
 
         # Add save action
-        save_action = file_menu.addAction('Save Conversation')
+        save_action = file_menu.addAction("Save Conversation")
         save_action.triggered.connect(self.save_conversation)
 
         # Add load action
-        load_action = file_menu.addAction('Load Conversation')
+        load_action = file_menu.addAction("Load Conversation")
         load_action.triggered.connect(self.load_conversation)
 
     def create_input_panel(self, title):
@@ -134,7 +145,9 @@ class OllamaGUI(QMainWindow):
         model_layout = QHBoxLayout()
         model_label = QLabel("Model:")
         self.model_selector = QComboBox()
-        self.model_selector.addItems(["deepseek-r1:32b", "llama2", "mistral", "codellama"])
+        self.model_selector.addItems(
+            ["deepseek-r1:32b", "llama2", "mistral", "codellama"]
+        )
         model_layout.addWidget(model_label)
         model_layout.addWidget(self.model_selector)
         model_layout.addStretch()
@@ -213,7 +226,7 @@ class OllamaGUI(QMainWindow):
         """Call Ollama API"""
         payload = {
             "model": self.model_selector.currentText(),
-            "prompt": self._format_prompt(user_input)
+            "prompt": self._format_prompt(user_input),
         }
         response = requests.post(OLLAMA_API_URL, json=payload, stream=True)
         response.raise_for_status()
@@ -221,7 +234,9 @@ class OllamaGUI(QMainWindow):
 
     def _format_prompt(self, user_input):
         """Format the prompt text sent to API"""
-        history_text = "\n".join([f"{msg['role']}: {msg['content']}" for msg in self.chat_history[-5:]])
+        history_text = "\n".join(
+            [f"{msg['role']}: {msg['content']}" for msg in self.chat_history[-5:]]
+        )
         return f"""Previous conversation:
 {history_text}
 
@@ -235,21 +250,23 @@ User: {user_input}"""
         output_content = ""
 
         patterns = {
-            'think': re.compile(r'<think>(.*?)</think>', re.DOTALL | re.IGNORECASE),
-            'output': re.compile(r'<output>(.*?)</output>', re.DOTALL | re.IGNORECASE)
+            "think": re.compile(r"<think>(.*?)</think>", re.DOTALL | re.IGNORECASE),
+            "output": re.compile(r"<output>(.*?)</output>", re.DOTALL | re.IGNORECASE),
         }
 
         for line in response.iter_lines():
             if line:
                 json_response = json.loads(line)
-                response_text = json_response.get('response', '')
+                response_text = json_response.get("response", "")
                 full_response += response_text
 
                 # Update raw output panel
                 self.raw_panel.content.setPlainText(full_response)
 
-                self._extract_thinking_content(full_response, patterns['think'])
-                output_content = self._extract_output_content(full_response, patterns['output'])
+                self._extract_thinking_content(full_response, patterns["think"])
+                output_content = self._extract_output_content(
+                    full_response, patterns["output"]
+                )
 
                 QApplication.processEvents()
 
@@ -260,7 +277,7 @@ User: {user_input}"""
         """Extract and display thinking process content"""
         matches = pattern.findall(full_response)
         if matches:
-            thinking_content = ''.join(matches)
+            thinking_content = "".join(matches)
             self.thinking_panel.display.setPlainText(thinking_content)
             return thinking_content
         return ""
@@ -269,7 +286,7 @@ User: {user_input}"""
         """Extract and display output content"""
         matches = pattern.findall(full_response)
         if matches:
-            output_content = ''.join(matches)
+            output_content = "".join(matches)
             html_output = self._generate_html_output(output_content)
             self._display_html_in_output(html_output)
             return output_content
@@ -284,12 +301,13 @@ User: {user_input}"""
     def _generate_html_output(self, content):
         """Generate HTML output with Mermaid support"""
         # Process Mermaid flowchart - look for both ```mermaid and <mermaid> tags
-        content = re.sub(r'```mermaid|<mermaid>',
-            '<div class="mermaid">', content)
-        content = re.sub(r'```|</mermaid>', '</div>', content)
+        content = re.sub(r"```mermaid|<mermaid>", '<div class="mermaid">', content)
+        content = re.sub(r"```|</mermaid>", "</div>", content)
 
         # Convert markdown to HTML
-        html_content = markdown.markdown(content, extensions=['fenced_code', 'tables', 'codehilite'])
+        html_content = markdown.markdown(
+            content, extensions=["fenced_code", "tables", "codehilite"]
+        )
 
         return f"""
         <html>
@@ -387,25 +405,25 @@ User: {user_input}"""
         filename = f"conversations/chat_{timestamp}.json"
 
         # Save conversation
-        with open(filename, 'w') as f:
-            json.dump({
-                "model": self.model_selector.currentText(),
-                "history": self.chat_history
-            }, f, indent=2)
+        with open(filename, "w") as f:
+            json.dump(
+                {
+                    "model": self.model_selector.currentText(),
+                    "history": self.chat_history,
+                },
+                f,
+                indent=2,
+            )
 
     def load_conversation(self):
         """Load conversation from file"""
-        from PySide6.QtWidgets import QFileDialog
 
         filename, _ = QFileDialog.getOpenFileName(
-            self,
-            "Load Conversation",
-            "conversations",
-            "JSON Files (*.json)"
+            self, "Load Conversation", "conversations", "JSON Files (*.json)"
         )
 
         if filename:
-            with open(filename, 'r') as f:
+            with open(filename, "r") as f:
                 data = json.load(f)
                 self.chat_history = data["history"]
 
@@ -418,6 +436,7 @@ User: {user_input}"""
                 if self.chat_history:
                     last_response = self.chat_history[-1].get("content", "")
                     self._display_raw_response(last_response)
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

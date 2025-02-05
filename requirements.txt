@@ -2,3 +2,7 @@ PySide6
 ollama
 markdown
 requests
+uv
+ruff
+black
+isort

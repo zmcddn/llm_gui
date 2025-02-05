@@ -1,14 +1,17 @@
+import json
 import sys
+import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
-from PySide6.QtWidgets import QApplication, QTextEdit
+
 from PySide6.QtWebEngineWidgets import QWebEngineView
-from main import OllamaGUI, CollapsibleFrame
-import json
-import tempfile
+from PySide6.QtWidgets import QApplication, QTextEdit
+
+from main import CollapsibleFrame, OllamaGUI
 
 # Create QApplication instance for tests
 app = QApplication(sys.argv)
+
 
 class TestOllamaGUI(unittest.TestCase):
     def setUp(self):
@@ -35,7 +38,7 @@ class TestOllamaGUI(unittest.TestCase):
         self.assertIn("<mermaid>", formatted)
         self.assertIn(test_input, formatted)
 
-    @patch('requests.post')
+    @patch("requests.post")
     def test_call_ollama_api(self, mock_post):
         """Test API call functionality"""
         mock_response = MagicMock()
@@ -49,15 +52,19 @@ class TestOllamaGUI(unittest.TestCase):
     def test_extract_thinking_content(self):
         """Test thinking content extraction"""
         test_response = "<think>Testing thoughts</think>"
-        content = self.gui._extract_thinking_content(test_response,
-            pattern=self.gui._process_streaming_response.__defaults__[0]['think'])
+        content = self.gui._extract_thinking_content(
+            test_response,
+            pattern=self.gui._process_streaming_response.__defaults__[0]["think"],
+        )
         self.assertEqual(content, "Testing thoughts")
 
     def test_extract_output_content(self):
         """Test output content extraction"""
         test_response = "<output>Test output</output>"
-        content = self.gui._extract_output_content(test_response,
-            pattern=self.gui._process_streaming_response.__defaults__[0]['output'])
+        content = self.gui._extract_output_content(
+            test_response,
+            pattern=self.gui._process_streaming_response.__defaults__[0]["output"],
+        )
         self.assertEqual(content, "Test output")
 
     def test_generate_html_output(self):
@@ -66,23 +73,23 @@ class TestOllamaGUI(unittest.TestCase):
             # Test Markdown
             {
                 "input": "# Header\n**Bold**",
-                "expected": ["<h1>Header</h1>", "<strong>Bold</strong>"]
+                "expected": ["<h1>Header</h1>", "<strong>Bold</strong>"],
             },
             # Test Mermaid
             {
                 "input": "<mermaid>graph TD\nA-->B</mermaid>",
-                "expected": ['<div class="mermaid">', "graph TD", "A-->B"]
+                "expected": ['<div class="mermaid">', "graph TD", "A-->B"],
             },
             # Test Code Blocks
             {
                 "input": "```python\nprint('hello')\n```",
-                "expected": ["<pre>", "<code>", "print('hello')"]
+                "expected": ["<pre>", "<code>", "print('hello')"],
             },
             # Test Tables
             {
                 "input": "| Header |\n|--------|",
-                "expected": ["<table>", "<th>", "Header"]
-            }
+                "expected": ["<table>", "<th>", "Header"],
+            },
         ]
 
         for case in test_cases:
@@ -118,15 +125,15 @@ class TestOllamaGUI(unittest.TestCase):
         self.assertEqual(len(self.gui.chat_history), 1)
         self.assertEqual(self.gui.chat_history[0]["content"], test_input)
 
-    @patch('PySide6.QtWidgets.QFileDialog.getOpenFileName')
+    @patch("PySide6.QtWidgets.QFileDialog.getOpenFileName")
     def test_load_conversation(self, mock_file_dialog):
         """Test conversation loading"""
         test_data = {
             "model": "deepseek-r1:32b",
-            "history": [{"role": "user", "content": "test"}]
+            "history": [{"role": "user", "content": "test"}],
         }
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json') as tf:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json") as tf:
             json.dump(test_data, tf)
             tf.flush()
             mock_file_dialog.return_value = (tf.name, "JSON Files (*.json)")
@@ -134,6 +141,7 @@ class TestOllamaGUI(unittest.TestCase):
             self.gui.load_conversation()
             self.assertEqual(self.gui.chat_history, test_data["history"])
             self.assertEqual(self.gui.model_selector.currentText(), test_data["model"])
+
 
 class TestCollapsibleFrame(unittest.TestCase):
     def setUp(self):
@@ -158,5 +166,6 @@ class TestCollapsibleFrame(unittest.TestCase):
         self.assertTrue(self.frame.content.isVisible())
         self.assertEqual(self.frame.content.maximumHeight(), 16777215)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
