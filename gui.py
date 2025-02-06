@@ -369,6 +369,7 @@ class OllamaGUI(QMainWindow):
         styled_html = f"""
         <html>
         <head>
+            <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
             <style>
                 body {{
                     background-color: {Styles.BACKGROUND_TERTIARY};
@@ -411,6 +412,27 @@ class OllamaGUI(QMainWindow):
         </head>
         <body>
             {html_content}
+            <script>
+                mermaid.initialize({{
+                    startOnLoad: true,
+                    theme: 'dark',
+                    themeVariables: {{
+                        'background-color': '{Styles.BACKGROUND_SECONDARY}',
+                        'primaryColor': '{Styles.ACCENT_COLOR}',
+                        'primaryTextColor': '{Styles.TEXT_PRIMARY}',
+                        'primaryBorderColor': '{Styles.BORDER_COLOR}',
+                        'lineColor': '{Styles.TEXT_PRIMARY}',
+                        'secondaryColor': '{Styles.BACKGROUND_TERTIARY}',
+                        'tertiaryColor': '{Styles.BACKGROUND_PRIMARY}'
+                    }},
+                    securityLevel: 'loose',
+                    fontFamily: 'Consolas, Menlo, Monaco, monospace'
+                }});
+                // Force mermaid to render after a short delay
+                setTimeout(function() {{
+                    mermaid.init(undefined, document.querySelectorAll('.mermaid'));
+                }}, 500);
+            </script>
         </body>
         </html>
         """
