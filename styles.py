@@ -205,3 +205,23 @@ class Styles:
             background: none;
         }}
     """
+
+    # Close button
+    CLOSE_BUTTON = f"""
+        QPushButton {{
+            background-color: transparent;
+            color: {TEXT_SECONDARY};
+            border: none;
+            border-radius: 2px;
+            font-size: 16px;
+            font-weight: bold;
+        }}
+        QPushButton:hover {{
+            background-color: {ERROR_COLOR}40;
+            color: {ERROR_COLOR};
+        }}
+        QPushButton:pressed {{
+            background-color: {ERROR_COLOR}60;
+            color: {ERROR_COLOR};
+        }}
+    """

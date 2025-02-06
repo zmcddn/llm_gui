@@ -95,25 +95,50 @@ class OllamaGUI(QMainWindow):
         self.console_panel = QWidget()
         console_layout = QVBoxLayout(self.console_panel)
         console_layout.setContentsMargins(0, 0, 0, 0)
+        console_layout.setSpacing(0)
 
-        # Add header for console panel
-        console_header = QTextEdit()
-        console_header.setPlainText("Console")
-        console_header.setReadOnly(True)
-        console_header.setMaximumHeight(30)
-        console_header.setVerticalScrollBarPolicy(
-            Qt.ScrollBarAlwaysOff
-        )  # Disable vertical scrollbar
-        console_header.setHorizontalScrollBarPolicy(
-            Qt.ScrollBarAlwaysOff
-        )  # Disable horizontal scrollbar
+        # Create header container with title and close button
+        header_container = QWidget()
+        header_container.setFixedHeight(30)  # Fix the height to match other headers
+        header_layout = QHBoxLayout(header_container)
+        header_layout.setContentsMargins(8, 0, 4, 0)  # Reduced margins
+        header_layout.setSpacing(0)  # Remove spacing between elements
+
+        # Add header text as QLabel instead of QTextEdit
+        header_label = QLabel("Console")
+        header_label.setStyleSheet(
+            f"""
+            background-color: {Styles.BACKGROUND_SECONDARY};
+            color: {Styles.TEXT_PRIMARY};
+            font-weight: bold;
+            padding: 4px;
+        """
+        )
+
+        # Create close button
+        close_button = QPushButton("×")
+        close_button.setFixedSize(20, 20)
+        close_button.clicked.connect(self.hide_console_panel)
+        close_button.setStyleSheet(Styles.CLOSE_BUTTON)
+
+        header_layout.addWidget(header_label, 1)  # Give the label stretch factor
+        header_layout.addWidget(close_button, 0)  # Don't stretch the button
+
+        # Style the header container
+        header_container.setStyleSheet(
+            f"""
+            background-color: {Styles.BACKGROUND_SECONDARY};
+            border-top-left-radius: 4px;
+            border-top-right-radius: 4px;
+        """
+        )
 
         self.console_content = QTextEdit()
         self.console_content.setReadOnly(True)
         self.console_content.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.console_content.setLineWrapMode(QTextEdit.WidgetWidth)
 
-        console_layout.addWidget(console_header)
+        console_layout.addWidget(header_container)
         console_layout.addWidget(self.console_content)
 
         # Set size constraints for console panel
@@ -201,35 +226,72 @@ class OllamaGUI(QMainWindow):
         """Create a display panel with title"""
         container = QWidget()
         layout = QVBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-        # Add header
-        header = QTextEdit()
-        header.setPlainText(title)
-        header.setReadOnly(True)
-        header.setMaximumHeight(30)
-        header.setVerticalScrollBarPolicy(
-            Qt.ScrollBarAlwaysOff
-        )  # Disable vertical scrollbar
-        header.setHorizontalScrollBarPolicy(
-            Qt.ScrollBarAlwaysOff
-        )  # Disable horizontal scrollbar
-        header.setStyleSheet("background-color: #f0f0f0; border: none;")
+        # Create header container
+        header_container = QWidget()
+        header_container.setFixedHeight(30)
+        header_layout = QHBoxLayout(header_container)
+        header_layout.setContentsMargins(8, 0, 4, 0)
+        header_layout.setSpacing(0)
+
+        # Add header text as QLabel
+        header_label = QLabel(title)
+        header_label.setStyleSheet(
+            f"""
+            background-color: {Styles.BACKGROUND_SECONDARY};
+            color: {Styles.TEXT_PRIMARY};
+            font-weight: bold;
+            padding: 4px;
+        """
+        )
+        header_layout.addWidget(header_label, 1)
+
+        # Style the header container
+        header_container.setStyleSheet(
+            f"""
+            background-color: {Styles.BACKGROUND_SECONDARY};
+            border-top-left-radius: 4px;
+            border-top-right-radius: 4px;
+        """
+        )
+
+        # Create content container for proper styling
+        content_container = QWidget()
+        content_layout = QVBoxLayout(content_container)
+        content_layout.setContentsMargins(1, 0, 1, 1)  # Border width
+        content_layout.setSpacing(0)
+
+        # Style the content container to match other panels
+        content_container.setStyleSheet(
+            f"""
+            QWidget {{
+                background-color: {Styles.BORDER_COLOR};
+                border-bottom-left-radius: 4px;
+                border-bottom-right-radius: 4px;
+            }}
+        """
+        )
 
         # Create display area - use QWebEngineView for output panel, QTextEdit for others
         if title == "Output":
             display = QWebEngineView()
-            display.setContextMenuPolicy(Qt.NoContextMenu)  # Disable right-click menu
+            display.setContextMenuPolicy(Qt.NoContextMenu)
         else:
             display = QTextEdit()
             display.setReadOnly(True)
             display.setAcceptRichText(True)
             display.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-            # Enable smooth scrolling
             display.setLineWrapMode(QTextEdit.WidgetWidth)
+            display.setStyleSheet(Styles.PANEL_CONTENT + Styles.SCROLLBAR)
 
-        # Add widgets to layout
-        layout.addWidget(header)
-        layout.addWidget(display)
+        # Add display to content container
+        content_layout.addWidget(display)
+
+        # Add widgets to main layout
+        layout.addWidget(header_container)
+        layout.addWidget(content_container)
 
         # Store the display widget as an attribute of the container
         container.display = display
@@ -303,14 +365,57 @@ class OllamaGUI(QMainWindow):
 
     def _display_html_in_output(self, html_content):
         """Helper method to display HTML content in the output panel"""
-        if isinstance(self.output_panel.display, QWebEngineView):
-            self.output_panel.display.setHtml(html_content)
-            # For WebEngineView, scrolling is handled by the HTML/JavaScript
-        else:
-            self.output_panel.display.setHtml(html_content)
-            self.output_panel.display.verticalScrollBar().setValue(
-                self.output_panel.display.verticalScrollBar().maximum()
-            )
+        # Add dark theme styles to the HTML content
+        styled_html = f"""
+        <html>
+        <head>
+            <style>
+                body {{
+                    background-color: {Styles.BACKGROUND_TERTIARY};
+                    color: {Styles.TEXT_PRIMARY};
+                    font-family: 'Consolas', 'Menlo', 'Monaco', monospace;
+                    padding: 8px;
+                    margin: 0;
+                }}
+                pre {{
+                    background-color: {Styles.BACKGROUND_SECONDARY};
+                    padding: 8px;
+                    border-radius: 4px;
+                    overflow-x: auto;
+                }}
+                code {{
+                    font-family: 'Consolas', 'Menlo', 'Monaco', monospace;
+                }}
+                a {{
+                    color: {Styles.ACCENT_COLOR};
+                }}
+                table {{
+                    border-collapse: collapse;
+                    width: 100%;
+                    margin: 8px 0;
+                }}
+                th, td {{
+                    border: 1px solid {Styles.BORDER_COLOR};
+                    padding: 6px;
+                }}
+                th {{
+                    background-color: {Styles.BACKGROUND_SECONDARY};
+                }}
+                .mermaid {{
+                    background-color: {Styles.BACKGROUND_SECONDARY};
+                    padding: 8px;
+                    border-radius: 4px;
+                    margin: 8px 0;
+                }}
+            </style>
+        </head>
+        <body>
+            {html_content}
+        </body>
+        </html>
+        """
+
+        self.output_panel.display.setHtml(styled_html)
 
     def save_conversation(self):
         """Save current conversation to file"""
@@ -357,10 +462,18 @@ class OllamaGUI(QMainWindow):
                     last_response = self.chat_history[-1].get("content", "")
                     self._display_raw_response(last_response)
 
+    def hide_console_panel(self):
+        """Hide console panel and update menu action"""
+        self.toggle_console_action.setChecked(False)
+        self.toggle_console_panel()
+
     def toggle_console_panel(self):
         """Toggle console panel visibility"""
         is_visible = self.toggle_console_action.isChecked()
         self.console_panel.setVisible(is_visible)
+        self.toggle_console_action.setText(
+            "Hide Console" if is_visible else "Show Console"
+        )
 
         if not is_visible:
             # Store the current sizes before hiding
