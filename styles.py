@@ -1,23 +1,30 @@
 class Styles:
-    # Color palette
-    BACKGROUND_PRIMARY = "#ffffff"
-    BACKGROUND_SECONDARY = "#f5f7f9"
-    BACKGROUND_TERTIARY = "#e9ecef"
+    # VSCode One Dark color palette
+    BACKGROUND_PRIMARY = "#282c34"  # Main background
+    BACKGROUND_SECONDARY = "#21252b"  # Sidebar/panel background
+    BACKGROUND_TERTIARY = "#2c313a"  # Input/active areas
 
-    TEXT_PRIMARY = "#2d3436"
-    TEXT_SECONDARY = "#636e72"
-    ACCENT_COLOR = "#0984e3"
-    BORDER_COLOR = "#dfe6e9"
+    TEXT_PRIMARY = "#abb2bf"  # Main text color
+    TEXT_SECONDARY = "#5c6370"  # Secondary text/comments
+    ACCENT_COLOR = "#61afef"  # Blue for buttons/highlights
+    BORDER_COLOR = "#181a1f"  # Dark borders
 
-    ERROR_COLOR = "#d63031"
-    SUCCESS_COLOR = "#00b894"
+    # Syntax highlighting colors (for potential future use)
+    SYNTAX_STRING = "#98c379"  # Green
+    SYNTAX_KEYWORD = "#c678dd"  # Purple
+    SYNTAX_FUNCTION = "#61afef"  # Blue
+    SYNTAX_NUMBER = "#d19a66"  # Orange
+
+    ERROR_COLOR = "#e06c75"  # Red
+    SUCCESS_COLOR = "#98c379"  # Green
 
     # Common styles
     COMMON = f"""
         QWidget {{
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-family: 'Consolas', 'Menlo', 'Monaco', monospace;
             font-size: 13px;
             color: {TEXT_PRIMARY};
+            background-color: {BACKGROUND_PRIMARY};
         }}
     """
 
@@ -31,17 +38,29 @@ class Styles:
     # Menu bar
     MENU_BAR = f"""
         QMenuBar {{
-            background-color: {BACKGROUND_PRIMARY};
+            background-color: {BACKGROUND_SECONDARY};
             border-bottom: 1px solid {BORDER_COLOR};
             padding: 2px;
         }}
         QMenuBar::item {{
             padding: 4px 10px;
             background-color: transparent;
+            border-radius: 4px;
         }}
         QMenuBar::item:selected {{
+            background-color: {BACKGROUND_TERTIARY};
+        }}
+        QMenu {{
             background-color: {BACKGROUND_SECONDARY};
+            border: 1px solid {BORDER_COLOR};
+            padding: 4px;
+        }}
+        QMenu::item {{
+            padding: 4px 20px;
             border-radius: 4px;
+        }}
+        QMenu::item:selected {{
+            background-color: {BACKGROUND_TERTIARY};
         }}
     """
 
@@ -49,12 +68,12 @@ class Styles:
     PANEL_HEADER = f"""
         QTextEdit {{
             background-color: {BACKGROUND_SECONDARY};
+            color: {TEXT_PRIMARY};
             border: none;
-            border-top-left-radius: 8px;
-            border-top-right-radius: 8px;
+            border-top-left-radius: 4px;
+            border-top-right-radius: 4px;
             padding: 8px;
             font-weight: bold;
-            color: {TEXT_PRIMARY};
             /* Disable scrollbars */
             overflow: hidden;
         }}
@@ -65,19 +84,24 @@ class Styles:
 
     PANEL_CONTENT = f"""
         QTextEdit {{
-            background-color: {BACKGROUND_PRIMARY};
+            background-color: {BACKGROUND_TERTIARY};
+            color: {TEXT_PRIMARY};
             border: 1px solid {BORDER_COLOR};
-            border-bottom-left-radius: 8px;
-            border-bottom-right-radius: 8px;
+            border-bottom-left-radius: 4px;
+            border-bottom-right-radius: 4px;
             padding: 8px;
             selection-background-color: {ACCENT_COLOR}40;
+        }}
+        QTextEdit::viewport {{
+            border: none;
         }}
     """
 
     # Input area
     MODEL_SELECTOR = f"""
         QComboBox {{
-            background-color: {BACKGROUND_PRIMARY};
+            background-color: {BACKGROUND_TERTIARY};
+            color: {TEXT_PRIMARY};
             border: 1px solid {BORDER_COLOR};
             border-radius: 4px;
             padding: 4px 8px;
@@ -91,16 +115,22 @@ class Styles:
             width: 20px;
         }}
         QComboBox::down-arrow {{
-            image: url(resources/down-arrow.png);
+            image: url(resources/down-arrow-light.png);
             width: 12px;
             height: 12px;
+        }}
+        QComboBox QAbstractItemView {{
+            background-color: {BACKGROUND_SECONDARY};
+            color: {TEXT_PRIMARY};
+            border: 1px solid {BORDER_COLOR};
+            selection-background-color: {BACKGROUND_TERTIARY};
         }}
     """
 
     SEND_BUTTON = f"""
         QPushButton {{
             background-color: {ACCENT_COLOR};
-            color: white;
+            color: {BACKGROUND_PRIMARY};
             border: none;
             border-radius: 4px;
             padding: 8px 16px;
@@ -112,39 +142,66 @@ class Styles:
         QPushButton:pressed {{
             background-color: {ACCENT_COLOR}bb;
         }}
+        QPushButton:disabled {{
+            background-color: {TEXT_SECONDARY};
+            color: {TEXT_PRIMARY}77;
+        }}
     """
 
     # Splitters
     SPLITTER = f"""
         QSplitter::handle {{
             background-color: {BORDER_COLOR};
-            margin: 2px;
+            margin: 1px;
         }}
         QSplitter::handle:hover {{
             background-color: {ACCENT_COLOR};
         }}
     """
 
-    # Scrollbars
+    # Scrollbars - VSCode style
     SCROLLBAR = f"""
         QScrollBar:vertical {{
             border: none;
-            background-color: {BACKGROUND_SECONDARY};
-            width: 8px;
+            background-color: {BACKGROUND_PRIMARY};
+            width: 14px;
             margin: 0px;
         }}
         QScrollBar::handle:vertical {{
-            background-color: {TEXT_SECONDARY};
-            border-radius: 4px;
+            background-color: {TEXT_SECONDARY}40;
             min-height: 20px;
+            margin: 2px;
+            border-radius: 2px;
         }}
         QScrollBar::handle:vertical:hover {{
-            background-color: {ACCENT_COLOR};
+            background-color: {TEXT_SECONDARY}80;
         }}
         QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
             height: 0px;
         }}
         QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{
+            background: none;
+        }}
+
+        QScrollBar:horizontal {{
+            border: none;
+            background-color: {BACKGROUND_PRIMARY};
+            height: 14px;
+            margin: 0px;
+        }}
+        QScrollBar::handle:horizontal {{
+            background-color: {TEXT_SECONDARY}40;
+            min-width: 20px;
+            margin: 2px;
+            border-radius: 2px;
+        }}
+        QScrollBar::handle:horizontal:hover {{
+            background-color: {TEXT_SECONDARY}80;
+        }}
+        QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
+            width: 0px;
+        }}
+        QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {{
             background: none;
         }}
     """
