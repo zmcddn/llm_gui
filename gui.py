@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from constants import MODEL_LIST
 from llm import LLMHandler
 from styles import Styles
 
@@ -173,9 +174,7 @@ class OllamaGUI(QMainWindow):
         model_layout = QHBoxLayout()
         model_label = QLabel("Model:")
         self.model_selector = QComboBox()
-        self.model_selector.addItems(
-            ["deepseek-r1:32b", "llama2", "mistral", "codellama"]
-        )
+        self.model_selector.addItems(MODEL_LIST)
         model_layout.addWidget(model_label)
         model_layout.addWidget(self.model_selector)
         model_layout.addStretch()
