@@ -18,9 +18,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from constants import MODEL_LIST
+from constants import APP_NAME, MODEL_LIST
 from llm import LLMHandler
 from styles import Styles
+from templates import HTMLTemplates
 
 
 class OllamaGUI(QMainWindow):
@@ -28,8 +29,8 @@ class OllamaGUI(QMainWindow):
         super().__init__()
         self.llm_handler = LLMHandler()
         self.setup_llm_signals()
-        self.setWindowTitle("Ollama GUI")
-        self.setGeometry(100, 100, 1200, 600)
+        self.setWindowTitle(APP_NAME)
+        self.setGeometry(100, 100, 1920, 1080)
         self.setup_ui()
         self.apply_styles()
         self.chat_history = []
@@ -89,7 +90,8 @@ class OllamaGUI(QMainWindow):
         left_panels.addWidget(self.output_panel)
 
         # Set initial sizes for left panels (equal distribution)
-        left_panels.setSizes([100, 100, 100])
+        panel_width = self.width() // 3  # Divide width by number of panels
+        left_panels.setSizes([panel_width, panel_width, panel_width])
 
         # Create console panel
         self.console_panel = QWidget()
@@ -143,7 +145,6 @@ class OllamaGUI(QMainWindow):
 
         # Set size constraints for console panel
         self.console_panel.setMinimumWidth(100)
-        self.console_panel.setMaximumWidth(500)
         self.console_panel.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
 
         # Add panels to main splitter
@@ -278,6 +279,17 @@ class OllamaGUI(QMainWindow):
         if title == "Output":
             display = QWebEngineView()
             display.setContextMenuPolicy(Qt.NoContextMenu)
+            display.setHtml(
+                HTMLTemplates.BASE.format(
+                    content=f"Welcome to {APP_NAME}!",
+                    bg_tertiary=Styles.BACKGROUND_TERTIARY,
+                    bg_secondary=Styles.BACKGROUND_SECONDARY,
+                    bg_primary=Styles.BACKGROUND_PRIMARY,
+                    text_primary=Styles.TEXT_PRIMARY,
+                    accent=Styles.ACCENT_COLOR,
+                    border=Styles.BORDER_COLOR,
+                )
+            )
         else:
             display = QTextEdit()
             display.setReadOnly(True)
@@ -307,14 +319,7 @@ class OllamaGUI(QMainWindow):
 
         # Show loading indicators
         self.thinking_panel.display.setPlainText("Analyzing your request...")
-        if isinstance(self.output_panel.display, QWebEngineView):
-            self.output_panel.display.setHtml(
-                """
-                <h3 style="color: #666;">
-                    Processing... Please wait while I prepare your response.
-                </h3>
-            """
-            )
+        self.output_panel.display.setHtml(self.llm_handler.get_loading_html())
         self.console_content.setPlainText("Processing request in progress...")
 
         # Start async processing
@@ -342,16 +347,8 @@ class OllamaGUI(QMainWindow):
 
     def handle_error(self, error_message):
         """Handle error cases"""
-        error_html = f"""
-        <html>
-        <body>
-            <h3 style="color: red;">Error Occurred</h3>
-            <p>{error_message}</p>
-        </body>
-        </html>
-        """
         self.thinking_panel.display.setPlainText(f"Error occurred: {error_message}")
-        self._display_html_in_output(error_html)
+        self.output_panel.display.setHtml(self.llm_handler._handle_error(error_message))
         self.console_content.setPlainText(f"Error: {error_message}")
 
     def clear_displays(self):
@@ -365,78 +362,15 @@ class OllamaGUI(QMainWindow):
 
     def _display_html_in_output(self, html_content):
         """Helper method to display HTML content in the output panel"""
-        # Add dark theme styles to the HTML content
-        styled_html = f"""
-        <html>
-        <head>
-            <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-            <style>
-                body {{
-                    background-color: {Styles.BACKGROUND_TERTIARY};
-                    color: {Styles.TEXT_PRIMARY};
-                    font-family: 'Consolas', 'Menlo', 'Monaco', monospace;
-                    padding: 8px;
-                    margin: 0;
-                }}
-                pre {{
-                    background-color: {Styles.BACKGROUND_SECONDARY};
-                    padding: 8px;
-                    border-radius: 4px;
-                    overflow-x: auto;
-                }}
-                code {{
-                    font-family: 'Consolas', 'Menlo', 'Monaco', monospace;
-                }}
-                a {{
-                    color: {Styles.ACCENT_COLOR};
-                }}
-                table {{
-                    border-collapse: collapse;
-                    width: 100%;
-                    margin: 8px 0;
-                }}
-                th, td {{
-                    border: 1px solid {Styles.BORDER_COLOR};
-                    padding: 6px;
-                }}
-                th {{
-                    background-color: {Styles.BACKGROUND_SECONDARY};
-                }}
-                .mermaid {{
-                    background-color: {Styles.BACKGROUND_SECONDARY};
-                    padding: 8px;
-                    border-radius: 4px;
-                    margin: 8px 0;
-                }}
-            </style>
-        </head>
-        <body>
-            {html_content}
-            <script>
-                mermaid.initialize({{
-                    startOnLoad: true,
-                    theme: 'dark',
-                    themeVariables: {{
-                        'background-color': '{Styles.BACKGROUND_SECONDARY}',
-                        'primaryColor': '{Styles.ACCENT_COLOR}',
-                        'primaryTextColor': '{Styles.TEXT_PRIMARY}',
-                        'primaryBorderColor': '{Styles.BORDER_COLOR}',
-                        'lineColor': '{Styles.TEXT_PRIMARY}',
-                        'secondaryColor': '{Styles.BACKGROUND_TERTIARY}',
-                        'tertiaryColor': '{Styles.BACKGROUND_PRIMARY}'
-                    }},
-                    securityLevel: 'loose',
-                    fontFamily: 'Consolas, Menlo, Monaco, monospace'
-                }});
-                // Force mermaid to render after a short delay
-                setTimeout(function() {{
-                    mermaid.init(undefined, document.querySelectorAll('.mermaid'));
-                }}, 500);
-            </script>
-        </body>
-        </html>
-        """
-
+        styled_html = HTMLTemplates.BASE.format(
+            content=html_content,
+            bg_tertiary=Styles.BACKGROUND_TERTIARY,
+            bg_secondary=Styles.BACKGROUND_SECONDARY,
+            bg_primary=Styles.BACKGROUND_PRIMARY,
+            text_primary=Styles.TEXT_PRIMARY,
+            accent=Styles.ACCENT_COLOR,
+            border=Styles.BORDER_COLOR,
+        )
         self.output_panel.display.setHtml(styled_html)
 
     def save_conversation(self):
