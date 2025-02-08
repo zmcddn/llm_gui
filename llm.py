@@ -85,17 +85,21 @@ User: {user_input}"""
         mermaid_blocks = []
 
         def save_mermaid(match):
-            mermaid_blocks.append(match.group(1))
+            # Clean and normalize the mermaid content
+            diagram = match.group(1).strip()
+            # Ensure proper line endings and indentation
+            diagram = "\n".join(line.strip() for line in diagram.splitlines())
+            mermaid_blocks.append(diagram)
             return f"MERMAID_PLACEHOLDER_{len(mermaid_blocks)-1}"
 
         # Save explicit mermaid tags
         content = re.sub(
-            r"<mermaid>(.*?)</mermaid>", save_mermaid, content, flags=re.DOTALL
+            r"<mermaid>\s*(.*?)\s*</mermaid>", save_mermaid, content, flags=re.DOTALL
         )
 
         # Save markdown-style mermaid blocks
         content = re.sub(
-            r"```mermaid\s*(.*?)```", save_mermaid, content, flags=re.DOTALL
+            r"```mermaid\s*(.*?)\s*```", save_mermaid, content, flags=re.DOTALL
         )
 
         # Convert markdown to HTML
@@ -103,9 +107,11 @@ User: {user_input}"""
 
         # Restore mermaid diagrams
         for i, diagram in enumerate(mermaid_blocks):
-            content = content.replace(
-                f"MERMAID_PLACEHOLDER_{i}", f'<div class="mermaid">{diagram}</div>'
-            )
+            placeholder = f"MERMAID_PLACEHOLDER_{i}"
+            mermaid_div = f"""<div class="mermaid">
+{diagram}
+</div>"""
+            content = content.replace(placeholder, mermaid_div)
 
         return content
 
@@ -142,15 +148,7 @@ User: {user_input}"""
 
     def _generate_html(self, content: str) -> str:
         """Generate HTML with consistent styling"""
-        return HTMLTemplates.BASE.format(
-            content=content,
-            bg_tertiary=Styles.BACKGROUND_TERTIARY,
-            bg_secondary=Styles.BACKGROUND_SECONDARY,
-            bg_primary=Styles.BACKGROUND_PRIMARY,
-            text_primary=Styles.TEXT_PRIMARY,
-            accent=Styles.ACCENT_COLOR,
-            border=Styles.BORDER_COLOR,
-        )
+        return HTMLTemplates.apply_style(content)
 
     def _handle_error(self, error_message: str) -> str:
         """Generate error HTML"""

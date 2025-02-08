@@ -1,3 +1,29 @@
+from dataclasses import dataclass
+
+from styles import Styles
+
+
+@dataclass
+class HTMLStyle:
+    bg_tertiary: str
+    bg_secondary: str
+    bg_primary: str
+    text_primary: str
+    accent: str
+    border: str
+
+    @classmethod
+    def default(cls):
+        return cls(
+            bg_tertiary=Styles.BACKGROUND_TERTIARY,
+            bg_secondary=Styles.BACKGROUND_SECONDARY,
+            bg_primary=Styles.BACKGROUND_PRIMARY,
+            text_primary=Styles.TEXT_PRIMARY,
+            accent=Styles.ACCENT_COLOR,
+            border=Styles.BORDER_COLOR,
+        )
+
+
 class HTMLTemplates:
     BASE = """
     <html>
@@ -51,6 +77,21 @@ class HTMLTemplates:
                 border-top: 1px solid {border};
                 margin: 16px 0;
             }}
+            ::-webkit-scrollbar {{
+                width: 12px;
+                height: 12px;
+            }}
+            ::-webkit-scrollbar-track {{
+                background: {bg_tertiary};
+            }}
+            ::-webkit-scrollbar-thumb {{
+                background: {bg_secondary};
+                border-radius: 6px;
+                border: 3px solid {bg_tertiary};
+            }}
+            ::-webkit-scrollbar-thumb:hover {{
+                background: {accent};
+            }}
         </style>
     </head>
     <body>
@@ -90,3 +131,10 @@ class HTMLTemplates:
         Processing... Please wait while I prepare your response.
     </h3>
     """
+
+    @staticmethod
+    def apply_style(content: str, style: HTMLStyle = None) -> str:
+        """Apply HTML styling to content"""
+        if style is None:
+            style = HTMLStyle.default()
+        return HTMLTemplates.BASE.format(content=content, **style.__dict__)

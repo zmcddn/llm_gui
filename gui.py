@@ -362,15 +362,7 @@ class OllamaGUI(QMainWindow):
 
     def _display_html_in_output(self, html_content):
         """Helper method to display HTML content in the output panel"""
-        styled_html = HTMLTemplates.BASE.format(
-            content=html_content,
-            bg_tertiary=Styles.BACKGROUND_TERTIARY,
-            bg_secondary=Styles.BACKGROUND_SECONDARY,
-            bg_primary=Styles.BACKGROUND_PRIMARY,
-            text_primary=Styles.TEXT_PRIMARY,
-            accent=Styles.ACCENT_COLOR,
-            border=Styles.BORDER_COLOR,
-        )
+        styled_html = HTMLTemplates.apply_style(html_content)
         self.output_panel.display.setHtml(styled_html)
 
     def save_conversation(self):
