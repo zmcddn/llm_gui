@@ -75,17 +75,26 @@ class OllamaGUI(QMainWindow):
         left_panels.setChildrenCollapsible(False)
 
         # Create panels
+        self.history_panel = self.create_display_panel("History")
         self.model_panel = self.create_input_panel("Input")
         self.thinking_panel = self.create_display_panel("Thinking Process")
         self.output_panel = self.create_display_panel("Output")
 
         # Set size policies for left panels
+        self.history_panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.model_panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.thinking_panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.output_panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
+        # Create vertical splitter for history and input panels
+        input_splitter = QSplitter(Qt.Vertical)
+        input_splitter.addWidget(self.history_panel)
+        input_splitter.addWidget(self.model_panel)
+        input_splitter.setHandleWidth(2)
+        input_splitter.setChildrenCollapsible(False)
+
         # Add panels to left splitter
-        left_panels.addWidget(self.model_panel)
+        left_panels.addWidget(input_splitter)
         left_panels.addWidget(self.thinking_panel)
         left_panels.addWidget(self.output_panel)
 
@@ -313,6 +322,21 @@ class OllamaGUI(QMainWindow):
     def process_input(self):
         """Process user input and get LLM response"""
         user_input = self.model_input.toPlainText()
+        if not user_input.strip():  # Skip empty input
+            return
+
+        # Update history panel
+        current_history = self.history_panel.display.toPlainText()
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        new_entry = f"[{timestamp}] {user_input}\n"
+        if current_history:
+            new_entry = f"{current_history}{new_entry}"
+        self.history_panel.display.setPlainText(new_entry)
+
+        # Scroll to bottom of history
+        scrollbar = self.history_panel.display.verticalScrollBar()
+        scrollbar.setValue(scrollbar.maximum())
+
         self.chat_history.append({"role": "user", "content": user_input})
         self.model_input.clear()
         self.clear_displays()

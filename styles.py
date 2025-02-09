@@ -163,8 +163,8 @@ class Styles:
     SCROLLBAR = f"""
         QScrollBar:vertical {{
             border: none;
-            background-color: {BACKGROUND_PRIMARY};
-            width: 14px;
+            background-color: {BACKGROUND_TERTIARY};
+            width: 12px;
             margin: 0px;
         }}
         QScrollBar::handle:vertical {{
@@ -174,7 +174,7 @@ class Styles:
             border-radius: 2px;
         }}
         QScrollBar::handle:vertical:hover {{
-            background-color: {TEXT_SECONDARY}80;
+            background-color: {ACCENT_COLOR}80;
         }}
         QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
             height: 0px;
@@ -185,7 +185,7 @@ class Styles:
 
         QScrollBar:horizontal {{
             border: none;
-            background-color: {BACKGROUND_PRIMARY};
+            background-color: {BACKGROUND_TERTIARY};
             height: 14px;
             margin: 0px;
         }}
@@ -196,7 +196,7 @@ class Styles:
             border-radius: 2px;
         }}
         QScrollBar::handle:horizontal:hover {{
-            background-color: {TEXT_SECONDARY}80;
+            background-color: {ACCENT_COLOR}80;
         }}
         QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
             width: 0px;
