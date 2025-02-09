@@ -14,6 +14,7 @@ run:
     --security-opt seccomp=unconfined \
     -e DISPLAY=$$DISPLAY \
     -v /tmp/.X11-unix:/tmp/.X11-unix \
+    -v $$(pwd)/conversations:/${DOCKER_IMAGE_NAME}/conversations \
     --add-host=host.docker.internal:host-gateway \
     -e OLLAMA_HOST="http://host.docker.internal:11434" \
     $(DOCKER_IMAGE_NAME)
