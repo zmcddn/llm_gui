@@ -176,8 +176,6 @@ class OllamaGUI(QMainWindow):
         file_menu = menubar.addMenu("File")
         save_action = file_menu.addAction("Save Conversation")
         save_action.triggered.connect(self.save_conversation)
-        load_action = file_menu.addAction("Load Conversation")
-        load_action.triggered.connect(self.load_conversation)
 
         # View menu
         view_menu = menubar.addMenu("View")
@@ -390,7 +388,7 @@ class OllamaGUI(QMainWindow):
         self.output_panel.display.setHtml(styled_html)
 
     def save_conversation(self):
-        """Save current conversation to file"""
+        """Save current conversation to markdown file"""
         if not self.chat_history:
             return
 
@@ -399,40 +397,40 @@ class OllamaGUI(QMainWindow):
 
         # Generate filename with timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"conversations/chat_{timestamp}.json"
+        filename = f"conversations/chat_{timestamp}.md"
 
-        # Save conversation
-        with open(filename, "w") as f:
-            json.dump(
-                {
-                    "model": self.model_selector.currentText(),
-                    "history": self.chat_history,
-                },
-                f,
-                indent=2,
-            )
+        with open(filename, "w", encoding='utf-8') as f:
+            # Write header
+            f.write(f"# Chat History - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+            f.write(f"Model: {self.model_selector.currentText()}\n\n")
 
-    def load_conversation(self):
-        """Load conversation from file"""
+            # Write chat history
+            for entry in self.chat_history:
+                role = entry['role']
+                content = entry['content']
 
-        filename, _ = QFileDialog.getOpenFileName(
-            self, "Load Conversation", "conversations", "JSON Files (*.json)"
-        )
+                if role == 'user':
+                    f.write(f"## User Input\n")
+                    f.write(f"{content}\n\n")
+                else:
+                    f.write(f"## Assistant Response\n")
+                    # Extract thinking and output sections if present
+                    thinking = self.llm_handler._extract_section(content, "think")
+                    output = self.llm_handler._extract_section(content, "output")
 
-        if filename:
-            with open(filename, "r") as f:
-                data = json.load(f)
-                self.chat_history = data["history"]
+                    if thinking:
+                        f.write("### Thinking Process\n")
+                        f.write(f"{thinking}\n\n")
 
-                # Set the model if it exists in the selector
-                model = data.get("model")
-                if model and self.model_selector.findText(model) != -1:
-                    self.model_selector.setCurrentText(model)
+                    if output:
+                        f.write("### Output\n")
+                        f.write(f"{output}\n\n")
 
-                # Update display with last response
-                if self.chat_history:
-                    last_response = self.chat_history[-1].get("content", "")
-                    self._display_raw_response(last_response)
+                    # If no sections found, write the raw content
+                    if not thinking and not output:
+                        f.write(f"{content}\n\n")
+
+                f.write("---\n\n")  # Add separator between entries
 
     def hide_console_panel(self):
         """Hide console panel and update menu action"""

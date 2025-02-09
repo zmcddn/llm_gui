@@ -29,6 +29,7 @@ htmlcov/
 *.log
 *.tmp
 .DS_Store
+.ruff_cache/
 
 # Local development
 conversations/
