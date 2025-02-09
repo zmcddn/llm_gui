@@ -45,4 +45,14 @@ clean:
 	find . -name '__pycache__' -type d -prune -exec rm -rf {} \;
 	find . \( -name '*.pyc' -o -name '*.pyo' \) -exec rm -f {} \;
 
-.PHONY: build run test format up clean
+shell:
+	@container_id=$$(docker ps -qf "ancestor=$(DOCKER_IMAGE_NAME)"); \
+	if [ -z "$$container_id" ]; then \
+		echo "No running container found for image $(DOCKER_IMAGE_NAME)"; \
+		echo "Please start the container first with 'make run'"; \
+		exit 1; \
+	else \
+		docker exec -it $$container_id /bin/bash; \
+	fi
+
+.PHONY: build run test format up clean shell
