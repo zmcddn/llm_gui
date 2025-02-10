@@ -1,3 +1,7 @@
+from pygments.style import Style
+from pygments.token import Comment, Generic, Keyword, Name, Number, Operator, String
+
+
 class Styles:
     # VSCode One Dark color palette
     BACKGROUND_PRIMARY = "#282c34"  # Main background
@@ -225,3 +229,62 @@ class Styles:
             color: {ERROR_COLOR};
         }}
     """
+
+    # Code highlighting styles
+    CODE_BLOCK = f"""
+        pre.code-block {{
+            background-color: {BACKGROUND_SECONDARY};
+            padding: 1em;
+            border-radius: 6px;
+            margin: 1em 0;
+            overflow-x: auto;
+        }}
+        .code-block code {{
+            font-family: 'Consolas', 'Menlo', 'Monaco', monospace;
+            font-size: 14px;
+            line-height: 1.4;
+        }}
+
+        /* Syntax highlighting */
+        .highlight .k {{ color: {SYNTAX_KEYWORD}; }}  /* Keyword */
+        .highlight .s {{ color: {SYNTAX_STRING}; }}   /* String */
+        .highlight .n {{ color: {TEXT_PRIMARY}; }}    /* Name */
+        .highlight .f {{ color: {SYNTAX_FUNCTION}; }} /* Function */
+        .highlight .nb {{ color: {SYNTAX_FUNCTION}; }}/* Built-in */
+        .highlight .nf {{ color: {SYNTAX_FUNCTION}; }}/* Function name */
+        .highlight .mi {{ color: {SYNTAX_NUMBER}; }}  /* Number */
+        .highlight .o {{ color: {TEXT_PRIMARY}; }}    /* Operator */
+        .highlight .p {{ color: {TEXT_PRIMARY}; }}    /* Punctuation */
+
+        /* Dark theme scrollbar for code blocks */
+        pre.code-block::-webkit-scrollbar {{
+            height: 8px;
+            background-color: {BACKGROUND_SECONDARY};
+        }}
+        pre.code-block::-webkit-scrollbar-thumb {{
+            background-color: {TEXT_SECONDARY};
+            border-radius: 4px;
+        }}
+        pre.code-block::-webkit-scrollbar-thumb:hover {{
+            background-color: {ACCENT_COLOR};
+        }}
+    """
+
+
+class OneDarkStyle(Style):
+    """VSCode One Dark inspired style for Pygments"""
+
+    background_color = Styles.BACKGROUND_SECONDARY
+    highlight_color = Styles.BACKGROUND_TERTIARY
+
+    styles = {
+        Keyword: Styles.SYNTAX_KEYWORD,
+        Name.Function: Styles.SYNTAX_FUNCTION,
+        Name.Class: Styles.SYNTAX_FUNCTION,
+        String: Styles.SYNTAX_STRING,
+        Number: Styles.SYNTAX_NUMBER,
+        Operator: Styles.TEXT_PRIMARY,
+        Name.Builtin: Styles.SYNTAX_FUNCTION,
+        Comment: Styles.TEXT_SECONDARY,
+        Generic: Styles.TEXT_PRIMARY,
+    }

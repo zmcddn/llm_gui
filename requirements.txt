@@ -6,3 +6,4 @@ uv
 ruff
 black
 isort
+Pygments>=2.17.2

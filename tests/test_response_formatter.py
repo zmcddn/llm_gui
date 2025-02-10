@@ -1,6 +1,6 @@
 import unittest
 from pathlib import Path
-
+from styles import Styles
 from llm import MarkdownResponseFormatter
 
 class TestMarkdownResponseFormatter(unittest.TestCase):
@@ -197,28 +197,109 @@ Regular text.
         self.assertIn('<h3>3.1.1 Third Level</h3>', output)
         self.assertIn('<ol>', output)  # Only the actual list should be ordered
 
+    def test_code_syntax_highlighting(self):
+        """Test code blocks with syntax highlighting"""
+        content = """
+    <output>
+    Here's some Python code:
+    ```python
+    def hello_world():
+        print("Hello, World!")
+        return 42
+
+    class Example:
+        def __init__(self):
+            self.value = 123
+    ```
+
+    And some JSON:
+    ```json
+    {
+        "name": "test",
+        "values": [1, 2, 3],
+        "nested": {
+            "key": "value"
+        }
+    }
+    ```
+
+    Plain text:
+    ```
+    This is plain text
+    No syntax highlighting
+    ```
+    </output>
+    """
+        _, output = self.formatter.format_response(content)
+
+        # Check for syntax highlighting elements
+        self.assertIn('class="highlight"', output)
+        self.assertIn('class="code-block"', output)
+        self.assertIn('class="language-python"', output)
+
+        # Check Python highlighting with One Dark colors (case insensitive)
+        self.assertIn('color: #C678DD', output)  # keyword color
+        self.assertIn('color: #61AFEF', output)  # function color
+        self.assertIn('color: #98C379', output)  # string color
+
+        # Check JSON highlighting (with escaped quotes)
+        self.assertIn('&quot;name&quot;', output)  # JSON key
+
+        # Check plain text
+        self.assertIn('This is plain text', output)
+
     def test_markdown_code_blocks(self):
         """Test code blocks with different languages"""
         content = """
-<output>
-```python
-def hello():
-    print("Hello")
-```
+            <output>
+            ```python
+            def hello():
+                print("Hello")
+            ```
 
-```json
-{
-    "key": "value"
-}
+            ```json
+            {
+                "key": "value"
+            }
+            ```
+            </output>
+        """
+        _, output = self.formatter.format_response(content)
+
+        # Check for proper code block structure
+        self.assertIn('<pre class="code-block"><code class="language-python">', output)
+
+        # Check Python code (with color spans)
+        self.assertIn('<span style="color: #C678DD">def</span>', output)
+        self.assertIn('<span style="color: #61AFEF">hello</span>', output)
+
+        # Check JSON block
+        self.assertIn('<pre class="code-block"><code class="language-json">', output)
+        self.assertIn('&quot;key&quot;', output)
+        self.assertIn('&quot;value&quot;', output)
+
+    def test_mermaid_rendering(self):
+        """Test mermaid diagram rendering"""
+        content = """
+<output>
+Here's a flowchart:
+```mermaid
+graph TD
+    A[Start] --> B{Decision}
+    B -->|Yes| C[OK]
+    B -->|No| D[Cancel]
 ```
 </output>
 """
         _, output = self.formatter.format_response(content)
 
-        self.assertIn('<pre><code class="language-python">', output)
-        self.assertIn('<pre><code class="language-json">', output)
-        self.assertIn('def hello():', output)
-        self.assertIn('"key": "value"', output)
+        # Check mermaid div structure
+        self.assertIn('<div class="mermaid">', output)
+        self.assertIn('graph TD', output)
+        self.assertNotIn('```mermaid', output)  # Should not contain raw markers
+
+        # Check the flowchart content
+        self.assertIn('A[Start] --> B{Decision}', output)
 
 if __name__ == '__main__':
     unittest.main()

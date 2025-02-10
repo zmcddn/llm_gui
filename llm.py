@@ -6,10 +6,14 @@ from typing import Optional, Protocol
 
 import markdown
 import requests
+from pygments import highlight
+from pygments.formatters import HtmlFormatter
+from pygments.lexers import get_lexer_by_name, guess_lexer
+from pygments.util import ClassNotFound
 from PySide6.QtCore import QObject, Signal
 
 from constants import FORMATTING_INSTRUCTIONS
-from styles import Styles
+from styles import OneDarkStyle, Styles
 from templates import HTMLTemplates
 
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://host.docker.internal:11434")
@@ -31,14 +35,19 @@ class ResponseFormatter(Protocol):
 
 class MarkdownResponseFormatter:
     def __init__(self):
-        self.md = markdown.Markdown(extensions=[
-            'fenced_code',
-            'tables',
-            'markdown.extensions.attr_list',
-            'markdown.extensions.def_list',
-            'markdown.extensions.sane_lists',
-            'markdown.extensions.extra'
-        ])
+        self.md = markdown.Markdown(
+            extensions=[
+                "fenced_code",
+                "tables",
+                "markdown.extensions.attr_list",
+                "markdown.extensions.def_list",
+                "markdown.extensions.sane_lists",
+                "markdown.extensions.extra",
+            ]
+        )
+        self.code_formatter = HtmlFormatter(
+            style=OneDarkStyle, cssclass="highlight", linenos=False, noclasses=True
+        )
 
     def _extract_section(self, text: str, tag: str) -> str:
         """Extract content from a specific XML-like tag"""
@@ -52,17 +61,39 @@ class MarkdownResponseFormatter:
             return content
 
         def replace_code_block(match):
-            lang = match.group(1)
-            code = match.group(2).strip()
-            return f'<pre><code class="language-{lang}">{code}</code></pre>'
+            lang = match.group(1) if len(match.groups()) > 1 else "text"
+            code = match.group(2) if len(match.groups()) > 1 else match.group(1)
+            code = code.strip()
+
+            try:
+                lexer = get_lexer_by_name(lang)
+            except ClassNotFound:
+                try:
+                    lexer = guess_lexer(code)
+                except ClassNotFound:
+                    lexer = get_lexer_by_name("text")
+
+            highlighted = highlight(code, lexer, self.code_formatter)
+
+            # Add both Pygments highlighting and markdown code block classes
+            return f'<pre class="code-block"><code class="language-{lang}">{highlighted}</code></pre>'
 
         # Process code blocks with language specification
         content = re.sub(
-            r'```(\w+)\n(.*?)```',
+            r"(?m)^[ \t]*```(\w+)\r?\n(.*?)^[ \t]*```",
             replace_code_block,
             content,
-            flags=re.DOTALL
+            flags=re.DOTALL | re.MULTILINE,
         )
+
+        # Process code blocks without language specification
+        content = re.sub(
+            r"(?m)^[ \t]*```\r?\n(.*?)^[ \t]*```",
+            replace_code_block,
+            content,
+            flags=re.DOTALL | re.MULTILINE,
+        )
+
         return content
 
     def _preprocess_lists(self, content: str) -> str:
@@ -73,7 +104,7 @@ class MarkdownResponseFormatter:
         in_numbered_list = False
         numbered_list_indent = 0
 
-        for line in content.split('\n'):
+        for line in content.split("\n"):
             stripped = line.lstrip()
 
             # Skip empty lines
@@ -84,9 +115,9 @@ class MarkdownResponseFormatter:
             indent = len(line) - len(stripped)
 
             # Handle numbered lists
-            if re.match(r'^\d+\.', stripped):
+            if re.match(r"^\d+\.", stripped):
                 if not in_list:
-                    lines.append('')
+                    lines.append("")
                 in_list = True
                 in_numbered_list = True
                 numbered_list_indent = indent
@@ -95,45 +126,43 @@ class MarkdownResponseFormatter:
                 continue
 
             # Handle bullet points
-            if stripped.startswith('- ') or stripped.startswith('* '):
+            if stripped.startswith("- ") or stripped.startswith("* "):
                 # If this is a nested bullet under a numbered list
                 if in_numbered_list and indent > numbered_list_indent:
                     # Convert to proper nested format with extra indentation
-                    lines.append(' ' * (indent) + '  - ' + stripped[2:])
+                    lines.append(" " * (indent) + "  - " + stripped[2:])
                 else:
                     if not in_list:
-                        lines.append('')
+                        lines.append("")
                     in_list = True
                     lines.append(line)
                 current_indent = indent
                 continue
 
             # Not a list item
-            if stripped and not line.startswith(' ' * current_indent):
+            if stripped and not line.startswith(" " * current_indent):
                 in_list = False
                 in_numbered_list = False
                 current_indent = 0
                 numbered_list_indent = 0
-                lines.append('')
+                lines.append("")
 
             lines.append(line)
 
-        return '\n'.join(lines)
+        return "\n".join(lines)
 
     def _postprocess_html(self, content: str) -> str:
         """Post-process HTML to fix nested lists and other formatting"""
         # Fix nested bullet points under numbered lists
         content = re.sub(
-            r'(<li>[^<]*)\n\s*-\s+([^<]*)</li>',
+            r"(<li>[^<]*)\n\s*-\s+([^<]*)</li>",
             r'\1<ul class="nested-list"><li>\2</li></ul></li>',
-            content
+            content,
         )
 
         # Fix multiple nested items
         content = re.sub(
-            r'</ul></li>\n\s*-\s+([^<]*)</li>',
-            r'<li>\1</li></ul></li>',
-            content
+            r"</ul></li>\n\s*-\s+([^<]*)</li>", r"<li>\1</li></ul></li>", content
         )
 
         return content
@@ -148,6 +177,7 @@ class MarkdownResponseFormatter:
 
         # Rest of the mermaid processing remains the same
         mermaid_blocks = []
+
         def save_mermaid(match):
             diagram = match.group(1).strip()
             diagram = "\n".join(line.strip() for line in diagram.splitlines())
@@ -155,17 +185,11 @@ class MarkdownResponseFormatter:
             return f"MERMAID_PLACEHOLDER_{len(mermaid_blocks)-1}"
 
         content = re.sub(
-            r"<mermaid>\s*(.*?)\s*</mermaid>",
-            save_mermaid,
-            content,
-            flags=re.DOTALL
+            r"<mermaid>\s*(.*?)\s*</mermaid>", save_mermaid, content, flags=re.DOTALL
         )
 
         content = re.sub(
-            r"```mermaid\s*(.*?)\s*```",
-            save_mermaid,
-            content,
-            flags=re.DOTALL
+            r"```mermaid\s*(.*?)\s*```", save_mermaid, content, flags=re.DOTALL
         )
 
         # Process code blocks
@@ -190,24 +214,20 @@ class MarkdownResponseFormatter:
         """Fix nested list formatting and ensure proper list type preservation"""
         # Fix nested unordered lists
         content = re.sub(
-            r'(<ul>(?:[^<]|<(?!ul|/ul>))*)<ul>',
-            r'\1<ul class="nested-list">',
-            content
+            r"(<ul>(?:[^<]|<(?!ul|/ul>))*)<ul>", r'\1<ul class="nested-list">', content
         )
 
         # Fix nested ordered lists
         content = re.sub(
-            r'(<ol>(?:[^<]|<(?!ol|/ol>))*)<ol>',
-            r'\1<ol class="nested-list">',
-            content
+            r"(<ol>(?:[^<]|<(?!ol|/ol>))*)<ol>", r'\1<ol class="nested-list">', content
         )
 
         # Fix mixed list types (unordered under ordered)
         content = re.sub(
-            r'(<li>.*?)<br\s*/>\s*-\s*(.*?)(?=</li>)',
+            r"(<li>.*?)<br\s*/>\s*-\s*(.*?)(?=</li>)",
             r'\1<ul class="nested-list"><li>\2</li></ul>',
             content,
-            flags=re.DOTALL
+            flags=re.DOTALL,
         )
 
         return content
@@ -236,12 +256,15 @@ class MarkdownResponseFormatter:
         thinking = self._extract_section(response_text, "think")
         output = self._extract_section(response_text, "output")
 
+        if not output and thinking:
+            output = response_text.replace(thinking, "")
+
         if output:
             # Preprocess lists
             output = self._preprocess_lists(output)
             # Process code blocks and mermaid
-            output = self._process_code_blocks(output)
-            formatted_output = self._process_mermaid(output)
+            output = self._process_mermaid(output)
+            formatted_output = self._process_code_blocks(output)
             # Convert to HTML
             html_output = self._generate_html(formatted_output)
             # Post-process HTML
