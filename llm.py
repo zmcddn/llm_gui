@@ -31,16 +31,14 @@ class ResponseFormatter(Protocol):
 
 class MarkdownResponseFormatter:
     def __init__(self):
-        # Add extensions for better list handling and code highlighting
-        self.md = markdown.Markdown(
-            extensions=[
-                "fenced_code",
-                "tables",
-                "markdown.extensions.attr_list",
-                "markdown.extensions.def_list",
-                "markdown.extensions.nl2br",
-            ]
-        )
+        self.md = markdown.Markdown(extensions=[
+            'fenced_code',
+            'tables',
+            'markdown.extensions.attr_list',
+            'markdown.extensions.def_list',
+            'markdown.extensions.sane_lists',
+            'markdown.extensions.extra'
+        ])
 
     def _extract_section(self, text: str, tag: str) -> str:
         """Extract content from a specific XML-like tag"""
@@ -48,32 +46,108 @@ class MarkdownResponseFormatter:
         match = re.search(pattern, text, re.DOTALL)
         return match.group(1).strip() if match else ""
 
+    def _process_code_blocks(self, content: str) -> str:
+        """Pre-process code blocks to protect them from markdown conversion"""
+        if not content:
+            return content
+
+        def replace_code_block(match):
+            lang = match.group(1)
+            code = match.group(2).strip()
+            return f'<pre><code class="language-{lang}">{code}</code></pre>'
+
+        # Process code blocks with language specification
+        content = re.sub(
+            r'```(\w+)\n(.*?)```',
+            replace_code_block,
+            content,
+            flags=re.DOTALL
+        )
+        return content
+
+    def _preprocess_lists(self, content: str) -> str:
+        """Pre-process lists to ensure proper nesting and formatting"""
+        lines = []
+        current_indent = 0
+        in_list = False
+        in_numbered_list = False
+        numbered_list_indent = 0
+
+        for line in content.split('\n'):
+            stripped = line.lstrip()
+
+            # Skip empty lines
+            if not stripped:
+                lines.append(line)
+                continue
+
+            indent = len(line) - len(stripped)
+
+            # Handle numbered lists
+            if re.match(r'^\d+\.', stripped):
+                if not in_list:
+                    lines.append('')
+                in_list = True
+                in_numbered_list = True
+                numbered_list_indent = indent
+                lines.append(line)
+                current_indent = indent
+                continue
+
+            # Handle bullet points
+            if stripped.startswith('- ') or stripped.startswith('* '):
+                # If this is a nested bullet under a numbered list
+                if in_numbered_list and indent > numbered_list_indent:
+                    # Convert to proper nested format with extra indentation
+                    lines.append(' ' * (indent) + '  - ' + stripped[2:])
+                else:
+                    if not in_list:
+                        lines.append('')
+                    in_list = True
+                    lines.append(line)
+                current_indent = indent
+                continue
+
+            # Not a list item
+            if stripped and not line.startswith(' ' * current_indent):
+                in_list = False
+                in_numbered_list = False
+                current_indent = 0
+                numbered_list_indent = 0
+                lines.append('')
+
+            lines.append(line)
+
+        return '\n'.join(lines)
+
+    def _postprocess_html(self, content: str) -> str:
+        """Post-process HTML to fix nested lists and other formatting"""
+        # Fix nested bullet points under numbered lists
+        content = re.sub(
+            r'(<li>[^<]*)\n\s*-\s+([^<]*)</li>',
+            r'\1<ul class="nested-list"><li>\2</li></ul></li>',
+            content
+        )
+
+        # Fix multiple nested items
+        content = re.sub(
+            r'</ul></li>\n\s*-\s+([^<]*)</li>',
+            r'<li>\1</li></ul></li>',
+            content
+        )
+
+        return content
+
     def _process_mermaid(self, content: str) -> str:
         """Process both explicit mermaid tags and markdown-style mermaid code blocks"""
         if not content:
             return content
 
-        # Save code blocks to prevent interference with mermaid processing
-        code_blocks = []
+        # Pre-process lists before any other processing
+        content = self._preprocess_lists(content)
 
-        def save_code_block(match):
-            code = match.group(1)
-            lang = match.group(2)
-            block = f"{lang}\n{code}"
-            code_blocks.append(block)
-            return f"CODE_BLOCK_PLACEHOLDER_{len(code_blocks)-1}"
-
-        # Save non-mermaid code blocks
-        content = re.sub(
-            r"```(\w+)\n(.*?)```",
-            lambda m: save_code_block(m) if m.group(1) != "mermaid" else m.group(0),
-            content,
-            flags=re.DOTALL,
-        )
-
-        # Process mermaid blocks as before
+        # Rest of the mermaid processing remains the same
         mermaid_blocks = []
-
         def save_mermaid(match):
             diagram = match.group(1).strip()
             diagram = "\n".join(line.strip() for line in diagram.splitlines())
@@ -81,20 +155,24 @@ class MarkdownResponseFormatter:
             return f"MERMAID_PLACEHOLDER_{len(mermaid_blocks)-1}"
 
         content = re.sub(
-            r"<mermaid>\s*(.*?)\s*</mermaid>", save_mermaid, content, flags=re.DOTALL
+            r"<mermaid>\s*(.*?)\s*</mermaid>",
+            save_mermaid,
+            content,
+            flags=re.DOTALL
         )
+
         content = re.sub(
-            r"```mermaid\s*(.*?)\s*```", save_mermaid, content, flags=re.DOTALL
+            r"```mermaid\s*(.*?)\s*```",
+            save_mermaid,
+            content,
+            flags=re.DOTALL
         )
+
+        # Process code blocks
+        content = self._process_code_blocks(content)
 
         # Convert markdown to HTML
         content = self.md.convert(content)
-
-        # Restore code blocks
-        for i, block in enumerate(code_blocks):
-            lang, code = block.split("\n", 1)
-            replacement = f'<pre><code class="language-{lang}">{code}</code></pre>'
-            content = content.replace(f"CODE_BLOCK_PLACEHOLDER_{i}", replacement)
 
         # Restore mermaid diagrams
         for i, diagram in enumerate(mermaid_blocks):
@@ -103,9 +181,33 @@ class MarkdownResponseFormatter:
 </div>"""
             content = content.replace(f"MERMAID_PLACEHOLDER_{i}", mermaid_div)
 
-        # Add CSS classes for nested lists
+        # Fix nested list formatting
+        content = self._fix_nested_lists(content)
+
+        return content
+
+    def _fix_nested_lists(self, content: str) -> str:
+        """Fix nested list formatting and ensure proper list type preservation"""
+        # Fix nested unordered lists
         content = re.sub(
-            r"(<ul>(?:[^<]|<(?!ul|/ul>))*<ul>)", r'\1 class="nested-list"', content
+            r'(<ul>(?:[^<]|<(?!ul|/ul>))*)<ul>',
+            r'\1<ul class="nested-list">',
+            content
+        )
+
+        # Fix nested ordered lists
+        content = re.sub(
+            r'(<ol>(?:[^<]|<(?!ol|/ol>))*)<ol>',
+            r'\1<ol class="nested-list">',
+            content
+        )
+
+        # Fix mixed list types (unordered under ordered)
+        content = re.sub(
+            r'(<li>.*?)<br\s*/>\s*-\s*(.*?)(?=</li>)',
+            r'\1<ul class="nested-list"><li>\2</li></ul>',
+            content,
+            flags=re.DOTALL
         )
 
         return content
@@ -115,13 +217,16 @@ class MarkdownResponseFormatter:
         if not content:
             return ""
 
-        # Add CSS for nested lists
+        # Add CSS for nested lists and code blocks
         additional_styles = """
         <style>
-            ul, ol { padding-left: 2em; }
+            ul, ol { padding-left: 2em; margin: 1em 0; }
             .nested-list { margin-left: 1em; }
-            pre { background-color: #f6f8fa; padding: 1em; border-radius: 6px; }
+            pre { background-color: #f6f8fa; padding: 1em; border-radius: 6px; margin: 1em 0; }
             code { font-family: monospace; }
+            li { margin: 0.5em 0; }
+            li > ul, li > ol { margin: 0.5em 0; }
+            .nested-list li { margin: 0.25em 0; }
         </style>
         """
         return HTMLTemplates.apply_style(content + additional_styles)
@@ -132,8 +237,15 @@ class MarkdownResponseFormatter:
         output = self._extract_section(response_text, "output")
 
         if output:
+            # Preprocess lists
+            output = self._preprocess_lists(output)
+            # Process code blocks and mermaid
+            output = self._process_code_blocks(output)
             formatted_output = self._process_mermaid(output)
+            # Convert to HTML
             html_output = self._generate_html(formatted_output)
+            # Post-process HTML
+            html_output = self._postprocess_html(html_output)
         else:
             html_output = ""
 
