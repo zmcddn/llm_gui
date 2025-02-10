@@ -168,16 +168,24 @@ class MarkdownResponseFormatter:
         return content
 
     def _process_mermaid(self, content: str) -> str:
-        """Process both explicit mermaid tags and markdown-style mermaid code blocks"""
+        """Process mermaid diagrams, but only those not inside code blocks"""
         if not content:
             return content
 
-        # Pre-process lists before any other processing
-        content = self._preprocess_lists(content)
+        # First, temporarily replace non-mermaid code blocks to protect them
+        code_blocks = []
+        def save_code_block(match):
+            code_blocks.append(match.group(0))
+            return f'CODE_BLOCK_{len(code_blocks)-1}'
+        content = re.sub(
+            r'```(?!mermaid\n)(\w+)?\n(.*?)```',
+            save_code_block,
+            content,
+            flags=re.DOTALL
+        )
 
         # Rest of the mermaid processing remains the same
         mermaid_blocks = []
-
         def save_mermaid(match):
             diagram = match.group(1).strip()
             diagram = "\n".join(line.strip() for line in diagram.splitlines())
@@ -192,6 +200,10 @@ class MarkdownResponseFormatter:
             r"```mermaid\s*(.*?)\s*```", save_mermaid, content, flags=re.DOTALL
         )
 
+        # Restore code blocks before processing them
+        for i, block in enumerate(code_blocks):
+            content = content.replace(f'CODE_BLOCK_{i}', block)
+
         # Process code blocks
         content = self._process_code_blocks(content)
 
@@ -200,13 +212,8 @@ class MarkdownResponseFormatter:
 
         # Restore mermaid diagrams
         for i, diagram in enumerate(mermaid_blocks):
-            mermaid_div = f"""<div class="mermaid">
-{diagram}
-</div>"""
+            mermaid_div = f'<div class="mermaid">\n{diagram}\n</div>'
             content = content.replace(f"MERMAID_PLACEHOLDER_{i}", mermaid_div)
-
-        # Fix nested list formatting
-        content = self._fix_nested_lists(content)
 
         return content
 
@@ -250,9 +257,17 @@ class MarkdownResponseFormatter:
         if output:
             # Preprocess lists
             output = self._preprocess_lists(output)
+
+            # Pre-process lists before any other processing
+            output = self._preprocess_lists(output)
+
             # Process code blocks and mermaid
             output = self._process_mermaid(output)
-            formatted_output = self._process_code_blocks(output)
+            content = self._process_code_blocks(output)
+
+            # Fix nested list formatting
+            formatted_output = self._fix_nested_lists(content)
+
             # Convert to HTML
             html_output = self._generate_html(formatted_output)
             # Post-process HTML

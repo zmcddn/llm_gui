@@ -281,16 +281,16 @@ Regular text.
     def test_mermaid_rendering(self):
         """Test mermaid diagram rendering"""
         content = """
-<output>
-Here's a flowchart:
-```mermaid
-graph TD
-    A[Start] --> B{Decision}
-    B -->|Yes| C[OK]
-    B -->|No| D[Cancel]
-```
-</output>
-"""
+            <output>
+            Here's a flowchart:
+            ```mermaid
+            graph TD
+                A[Start] --> B{Decision}
+                B -->|Yes| C[OK]
+                B -->|No| D[Cancel]
+            ```
+            </output>
+        """
         _, output = self.formatter.format_response(content)
 
         # Check mermaid div structure
@@ -300,6 +300,32 @@ graph TD
 
         # Check the flowchart content
         self.assertIn('A[Start] --> B{Decision}', output)
+
+    def test_mermaid_in_code_block(self):
+        """Test that mermaid inside code blocks is not rendered as a diagram"""
+        content = '''Here's a code block containing mermaid:
+            ```html
+            <script>
+                const chart = `
+                    <mermaid>
+                        graph TD
+                        A[Start] --> B[End]
+                    </mermaid>
+                `;
+            </script>
+            ```
+        '''
+
+        formatter = MarkdownResponseFormatter()
+        output = formatter._process_mermaid(content)
+
+        # Should be treated as code, not as a mermaid diagram
+        self.assertNotIn('<div class="mermaid">', output)
+        # Should preserve the mermaid content as plain text
+        self.assertIn('graph TD', output)
+        # Should be wrapped in code block tags
+        self.assertIn('<pre class="code-block">', output)
+        self.assertIn('class="language-html"', output)
 
 if __name__ == '__main__':
     unittest.main()
