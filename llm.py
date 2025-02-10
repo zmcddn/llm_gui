@@ -25,6 +25,7 @@ class LLMSignals(QObject):
     output_update = Signal(str)
     console_update = Signal(str)
     error_occurred = Signal(str)
+    llm_history_update = Signal(str)
 
 
 class ResponseFormatter(Protocol):
@@ -174,18 +175,21 @@ class MarkdownResponseFormatter:
 
         # First, temporarily replace non-mermaid code blocks to protect them
         code_blocks = []
+
         def save_code_block(match):
             code_blocks.append(match.group(0))
-            return f'CODE_BLOCK_{len(code_blocks)-1}'
+            return f"CODE_BLOCK_{len(code_blocks)-1}"
+
         content = re.sub(
-            r'```(?!mermaid\n)(\w+)?\n(.*?)```',
+            r"```(?!mermaid\n)(\w+)?\n(.*?)```",
             save_code_block,
             content,
-            flags=re.DOTALL
+            flags=re.DOTALL,
         )
 
         # Rest of the mermaid processing remains the same
         mermaid_blocks = []
+
         def save_mermaid(match):
             diagram = match.group(1).strip()
             diagram = "\n".join(line.strip() for line in diagram.splitlines())
@@ -202,7 +206,7 @@ class MarkdownResponseFormatter:
 
         # Restore code blocks before processing them
         for i, block in enumerate(code_blocks):
-            content = content.replace(f'CODE_BLOCK_{i}', block)
+            content = content.replace(f"CODE_BLOCK_{i}", block)
 
         # Process code blocks
         content = self._process_code_blocks(content)
@@ -324,7 +328,8 @@ class LLMHandler:
         try:
             prompt = self.client._format_prompt(user_input, chat_history)
             response = self.client.stream_response(model, prompt)
-            self._process_response(response)
+            full_response = self._process_response(response)
+            self.signals.llm_history_update.emit(full_response)
         except Exception as e:
             self.signals.error_occurred.emit(str(e))
 
@@ -352,6 +357,8 @@ class LLMHandler:
                     last_output = output
 
                 self.signals.console_update.emit(full_response)
+
+        return full_response
 
     def get_loading_html(self) -> str:
         """Generate loading HTML"""

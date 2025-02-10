@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
 )
 
 from constants import APP_NAME, MODEL_LIST
-from llm import LLMHandler
+from llm import LLMHandler, MarkdownResponseFormatter
 from styles import Styles
 from templates import HTMLTemplates
 
@@ -26,12 +26,14 @@ class OllamaGUI(QMainWindow):
     def __init__(self):
         super().__init__()
         self.llm_handler = LLMHandler()
+        self.formatter = MarkdownResponseFormatter()
         self.setup_llm_signals()
         self.setWindowTitle(APP_NAME)
         self.setGeometry(100, 100, 1920, 1080)
         self.setup_ui()
         self.apply_styles()
         self.chat_history = []
+        self.save_timestamp = None
 
     def apply_styles(self):
         """Apply custom styles to the application"""
@@ -55,6 +57,7 @@ class OllamaGUI(QMainWindow):
         self.llm_handler.signals.thinking_update.connect(self.update_thinking)
         self.llm_handler.signals.output_update.connect(self.update_output)
         self.llm_handler.signals.console_update.connect(self.update_console)
+        self.llm_handler.signals.llm_history_update.connect(self.update_llm_history)
         self.llm_handler.signals.error_occurred.connect(self.handle_error)
 
     def setup_ui(self):
@@ -367,10 +370,16 @@ class OllamaGUI(QMainWindow):
             self.console_content.verticalScrollBar().maximum()
         )
 
+    def update_llm_history(self, llm_history):
+        """Update LLM history"""
+
+        if self.chat_history:
+            self.chat_history[-1]["llm_history"] = llm_history
+
     def handle_error(self, error_message):
         """Handle error cases"""
         self.thinking_panel.display.setPlainText(f"Error occurred: {error_message}")
-        self.output_panel.display.setHtml(self.llm_handler._handle_error(error_message))
+        self.output_panel.display.setHtml(error_message)
         self.console_content.setPlainText(f"Error: {error_message}")
 
     def clear_displays(self):
@@ -396,8 +405,10 @@ class OllamaGUI(QMainWindow):
         Path("conversations").mkdir(exist_ok=True)
 
         # Generate filename with timestamp
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"conversations/chat_{timestamp}.md"
+        if self.save_timestamp is None:
+            self.save_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        filename = f"conversations/chat_{self.save_timestamp}.md"
 
         with open(filename, "w", encoding="utf-8") as f:
             # Write header
@@ -408,29 +419,25 @@ class OllamaGUI(QMainWindow):
 
             # Write chat history
             for entry in self.chat_history:
-                role = entry["role"]
                 content = entry["content"]
+                full_response = entry["llm_history"]
 
-                if role == "user":
-                    f.write("## User Input\n")
-                    f.write(f"{content}\n\n")
+                f.write("## User Input\n")
+                f.write(f"{content}\n\n")
+                f.write("## Assistant Response\n")
+
+                # Extract thinking and output sections if present
+                thinking = self.formatter._extract_section(full_response, "think")
+                output = self.formatter._extract_section(full_response, "output")
+
+                if thinking and output:
+                    f.write("### Thinking Process\n")
+                    f.write(f"{thinking}\n\n")
+                    f.write("### Output\n")
+                    f.write(f"{output}\n\n")
                 else:
-                    f.write("## Assistant Response\n")
-                    # Extract thinking and output sections if present
-                    thinking = self.llm_handler._extract_section(content, "think")
-                    output = self.llm_handler._extract_section(content, "output")
-
-                    if thinking:
-                        f.write("### Thinking Process\n")
-                        f.write(f"{thinking}\n\n")
-
-                    if output:
-                        f.write("### Output\n")
-                        f.write(f"{output}\n\n")
-
                     # If no sections found, write the raw content
-                    if not thinking and not output:
-                        f.write(f"{content}\n\n")
+                    f.write(f"{full_response}\n\n")
 
                 f.write("---\n\n")  # Add separator between entries
 
