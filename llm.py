@@ -237,19 +237,7 @@ class MarkdownResponseFormatter:
         if not content:
             return ""
 
-        # Add CSS for nested lists and code blocks
-        additional_styles = """
-        <style>
-            ul, ol { padding-left: 2em; margin: 1em 0; }
-            .nested-list { margin-left: 1em; }
-            pre { background-color: #f6f8fa; padding: 1em; border-radius: 6px; margin: 1em 0; }
-            code { font-family: monospace; }
-            li { margin: 0.5em 0; }
-            li > ul, li > ol { margin: 0.5em 0; }
-            .nested-list li { margin: 0.25em 0; }
-        </style>
-        """
-        return HTMLTemplates.apply_style(content + additional_styles)
+        return HTMLTemplates.apply_style(content)
 
     def format_response(self, response_text: str) -> tuple[str, str]:
         """Format the response and return (thinking, output) tuple"""
