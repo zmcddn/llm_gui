@@ -131,7 +131,7 @@ class Styles:
         }}
     """
 
-    SEND_BUTTON = f"""
+    BUTTON = f"""
         QPushButton {{
             background-color: {ACCENT_COLOR};
             color: {BACKGROUND_PRIMARY};

@@ -48,7 +48,7 @@ class OllamaGUI(QMainWindow):
 
         # Style the model selector and send button
         self.model_selector.setStyleSheet(Styles.MODEL_SELECTOR)
-        self.send_button.setStyleSheet(Styles.SEND_BUTTON)
+        self.send_button.setStyleSheet(Styles.BUTTON)
 
     def setup_llm_signals(self):
         """Setup signal connections for LLM handler"""
@@ -169,11 +169,6 @@ class OllamaGUI(QMainWindow):
     def setup_menu(self):
         """Setup menu bar"""
         menubar = self.menuBar()
-
-        # File menu
-        file_menu = menubar.addMenu("File")
-        save_action = file_menu.addAction("Save Conversation")
-        save_action.triggered.connect(self.save_conversation)
 
         # View menu
         view_menu = menubar.addMenu("View")
@@ -305,6 +300,13 @@ class OllamaGUI(QMainWindow):
 
         # Add display to content container
         content_layout.addWidget(display)
+
+        # Add save button if this is the history panel
+        if title == "History":
+            save_button = QPushButton("Save Conversation")
+            save_button.clicked.connect(self.save_conversation)
+            save_button.setStyleSheet(Styles.BUTTON)
+            content_layout.addWidget(save_button)
 
         # Add widgets to main layout
         layout.addWidget(header_container)
