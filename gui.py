@@ -1,4 +1,3 @@
-import json
 from datetime import datetime
 from pathlib import Path
 
@@ -6,7 +5,6 @@ from PySide6.QtCore import Qt
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import (
     QComboBox,
-    QFileDialog,
     QHBoxLayout,
     QLabel,
     QMainWindow,
@@ -399,21 +397,23 @@ class OllamaGUI(QMainWindow):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"conversations/chat_{timestamp}.md"
 
-        with open(filename, "w", encoding='utf-8') as f:
+        with open(filename, "w", encoding="utf-8") as f:
             # Write header
-            f.write(f"# Chat History - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+            f.write(
+                f"# Chat History - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+            )
             f.write(f"Model: {self.model_selector.currentText()}\n\n")
 
             # Write chat history
             for entry in self.chat_history:
-                role = entry['role']
-                content = entry['content']
+                role = entry["role"]
+                content = entry["content"]
 
-                if role == 'user':
-                    f.write(f"## User Input\n")
+                if role == "user":
+                    f.write("## User Input\n")
                     f.write(f"{content}\n\n")
                 else:
-                    f.write(f"## Assistant Response\n")
+                    f.write("## Assistant Response\n")
                     # Extract thinking and output sections if present
                     thinking = self.llm_handler._extract_section(content, "think")
                     output = self.llm_handler._extract_section(content, "output")

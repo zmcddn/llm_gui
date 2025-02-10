@@ -25,8 +25,9 @@ test:
     --security-opt seccomp=unconfined \
     -e DISPLAY=$$DISPLAY \
     -v /tmp/.X11-unix:/tmp/.X11-unix \
-    -v $(PWD):/llm_gui \
-    $(DOCKER_IMAGE_NAME) python -m unittest test_ollama_gui.py
+    -v $(PWD):/workspace \
+    -w /workspace \
+    $(DOCKER_IMAGE_NAME) python -m unittest discover tests
 
 # Format code using uv and black
 format:
