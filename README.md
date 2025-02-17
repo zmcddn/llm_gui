@@ -22,24 +22,17 @@ Note that I've added a dev container to make it easier to run the application, b
 
 Working screenshots with Deepseek running locally.
 
-![Screenshot 1](./docs/screenshot1.png)
-
-![Screenshot 2](./docs/screenshot2.png)
-
-![Screenshot 3](./docs/screenshot3.png)
-
-![Screenshot 4](./docs/screenshot4.png)
-
-![Screenshot 5](./docs/screenshot5.png)
+![Screenshot 1](./docs/Screenshot1.png)
+![Screenshot 2](./docs/Screenshot2.png)
+![Screenshot 3](./docs/Screenshot3.png)
+![Screenshot 4](./docs/Screenshot4.png)
+![Screenshot 5](./docs/Screenshot5.png)
 
 ## Demo
 
-![Demo GIF](./docs/demo.gif)
+![Demo GIF](./docs/Demo.gif)
 
 Sorry for the super low resolution gif, can't make a 4k one with any free software on Windows, let me know if there is any good ones!
-
-# End Generation Here
-
 
 ## Installation
 
