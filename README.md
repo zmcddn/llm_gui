@@ -43,6 +43,11 @@ Sorry for the super low resolution gif, can't make a 4k one with any free softwa
 
 1. Clone the repository
 
+    ```bash
+    git clone git@github.com:zmcddn/llm_gui.git
+    cd llm_gui
+    ```
+
 2. Run the application:
 
     ```bash
